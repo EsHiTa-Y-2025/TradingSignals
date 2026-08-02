@@ -4,29 +4,76 @@ let currentLevels = null;
 let currentSymbol = null;
 let monitorTimer = null;
 
+
 const $ = (id) => document.getElementById(id);
 
+
+// Cards
 const upperCard = document.querySelector(".upper");
 const spCard = document.querySelector(".sp");
 const closeCard = document.querySelector(".close");
 const bpCard = document.querySelector(".bp");
 const lowerCard = document.querySelector(".lower");
 
-$("#calculateBtn").addEventListener("click", calculateLevels);
-$("#startMonitoring").addEventListener("click", startMonitoring);
-$("#searchBtn").addEventListener("click", searchSymbol);
+
+// Safe event listeners
+const calculateBtn = $("calculateBtn");
+const startMonitoringBtn = $("startMonitoring");
+const searchBtn = $("searchBtn");
+
+
+if (calculateBtn) {
+    calculateBtn.addEventListener(
+        "click",
+        calculateLevels
+    );
+}
+
+
+if (startMonitoringBtn) {
+    startMonitoringBtn.addEventListener(
+        "click",
+        startMonitoring
+    );
+}
+
+
+if (searchBtn) {
+    searchBtn.addEventListener(
+        "click",
+        searchSymbol
+    );
+}
+
+
+
+// ===============================
+// SEARCH SYMBOL
+// ===============================
 
 async function searchSymbol() {
 
-    const query = $("#symbolInput").value.trim();
+    const input = $("symbolInput");
 
-    if (!query) return;
+    if (!input) return;
+
+
+    const query = input.value.trim();
+
+
+    if (!query)
+        return;
+
 
     try {
 
-        const res = await fetch(`${API}/search?q=${query}`);
+        const res = await fetch(
+            `${API}/search?q=${query}`
+        );
+
 
         const data = await res.json();
+
 
         if (!data.length) {
 
@@ -36,115 +83,15 @@ async function searchSymbol() {
 
         }
 
+
         currentSymbol = data[0];
 
-        $("#symbolInput").value =
-            currentSymbol.name + " (" + currentSymbol.symbol + ")";
 
-    } catch (err) {
+        input.value =
+            `${currentSymbol.name} (${currentSymbol.symbol})`;
 
-        console.log(err);
 
     }
-
-}
-
-async function calculateLevels() {
-
-    if (!currentSymbol) {
-
-        alert("Select a symbol first");
-
-        return;
-
-    }
-
-    const from = $("#fromDate").value;
-
-    const to = $("#toDate").value;
-
-    if (!from || !to) {
-
-        alert("Select dates");
-
-        return;
-
-    }
-
-    try {
-
-        const res = await fetch(
-
-            `${API}/tape?symbol=${currentSymbol.symbol}&from=${from}&to=${to}`
-
-        );
-
-        currentLevels = await res.json();
-
-        $("#upperTdp").innerText = currentLevels.upperTDP.toFixed(2);
-
-        $("#sp").innerText = currentLevels.sp.toFixed(2);
-
-        $("#close").innerText = currentLevels.close.toFixed(2);
-
-        $("#bp").innerText = currentLevels.bp.toFixed(2);
-
-        $("#lowerTdp").innerText = currentLevels.lowerTDP.toFixed(2);
-
-    } catch (e) {
-
-        console.log(e);
-
-    }
-
-}
-
-async function startMonitoring() {
-
-    if (!currentLevels) {
-
-        alert("Calculate levels first.");
-
-        return;
-
-    }
-
-    if (monitorTimer)
-
-        clearInterval(monitorTimer);
-
-    updateLive();
-
-    monitorTimer = setInterval(updateLive, 2000);
-
-}
-
-async function updateLive() {
-
-    try {
-
-        const res = await fetch(
-
-            `${API}/live?symbol=${currentSymbol.symbol}`
-
-        );
-
-        const data = await res.json();
-
-        $("#livePrice").innerText = data.price.toFixed(2);
-
-        $("#marketOpen").innerText = data.open.toFixed(2);
-
-        determineScenario(data.open);
-
-        determineSignal(data.price);
-
-        updateDistances(data.price);
-
-        highlightNearest(data.price);
-
-    }
-
     catch(err){
 
         console.log(err);
@@ -153,158 +100,474 @@ async function updateLive() {
 
 }
 
+
+
+// ===============================
+// CALCULATE LEVELS
+// ===============================
+
+async function calculateLevels() {
+
+
+    if(!currentSymbol){
+
+        alert(
+            "Select a symbol first"
+        );
+
+        return;
+
+    }
+
+
+
+    const from = $("fromDate")?.value;
+
+    const to = $("toDate")?.value;
+
+
+
+    if(!from || !to){
+
+        alert(
+            "Select dates"
+        );
+
+        return;
+
+    }
+
+
+
+    try{
+
+
+        const res = await fetch(
+
+            `${API}/tape?symbol=${currentSymbol.symbol}&from=${from}&to=${to}`
+
+        );
+
+
+
+        currentLevels = await res.json();
+
+
+
+        if($("upperTdp"))
+            $("upperTdp").innerText =
+                currentLevels.upperTDP.toFixed(2);
+
+
+
+        if($("sp"))
+            $("sp").innerText =
+                currentLevels.sp.toFixed(2);
+
+
+
+        if($("close"))
+            $("close").innerText =
+                currentLevels.close.toFixed(2);
+
+
+
+        if($("bp"))
+            $("bp").innerText =
+                currentLevels.bp.toFixed(2);
+
+
+
+        if($("lowerTdp"))
+            $("lowerTdp").innerText =
+                currentLevels.lowerTDP.toFixed(2);
+
+
+
+    }
+    catch(err){
+
+        console.log(err);
+
+    }
+
+}
+
+
+
+// ===============================
+// START MONITORING
+// ===============================
+
+function startMonitoring(){
+
+
+    if(!currentLevels){
+
+        alert(
+            "Calculate levels first."
+        );
+
+        return;
+
+    }
+
+
+
+    if(monitorTimer)
+        clearInterval(monitorTimer);
+
+
+
+    updateLive();
+
+
+
+    monitorTimer =
+        setInterval(
+            updateLive,
+            2000
+        );
+
+}
+
+
+
+// ===============================
+// LIVE PRICE
+// ===============================
+
+async function updateLive(){
+
+
+    if(!currentSymbol)
+        return;
+
+
+
+    try{
+
+
+        const res = await fetch(
+
+            `${API}/live?symbol=${currentSymbol.symbol}`
+
+        );
+
+
+
+        const data =
+            await res.json();
+
+
+
+        if($("livePrice"))
+            $("livePrice").innerText =
+                data.price.toFixed(2);
+
+
+
+        if($("marketOpen"))
+            $("marketOpen").innerText =
+                data.open.toFixed(2);
+
+
+
+        determineScenario(data.open);
+
+
+        determineSignal(data.price);
+
+
+        updateDistances(data.price);
+
+
+        highlightNearest(data.price);
+
+
+
+    }
+    catch(err){
+
+        console.log(err);
+
+    }
+
+}
+
+
+
+// ===============================
+// SCENARIO
+// ===============================
+
 function determineScenario(open){
 
-    let scenario="Case 1";
 
-    if(open>currentLevels.upperTDP)
+    if(!currentLevels)
+        return;
 
-        scenario="Case 3 (Above Upper TDP)";
 
-    else if(open<currentLevels.lowerTDP)
 
-        scenario="Case 3 (Below Lower TDP)";
+    let scenario =
+        "Case 1";
+
+
+
+    if(open > currentLevels.upperTDP)
+
+        scenario =
+        "Case 3 (Above Upper TDP)";
+
+
+
+    else if(open < currentLevels.lowerTDP)
+
+        scenario =
+        "Case 3 (Below Lower TDP)";
+
+
 
     else{
 
-        const dClose=Math.abs(open-currentLevels.close);
 
-        const dUpper=Math.abs(open-currentLevels.upperTDP);
+        const dClose =
+            Math.abs(
+                open-currentLevels.close
+            );
 
-        const dLower=Math.abs(open-currentLevels.lowerTDP);
+
+        const dUpper =
+            Math.abs(
+                open-currentLevels.upperTDP
+            );
+
+
+        const dLower =
+            Math.abs(
+                open-currentLevels.lowerTDP
+            );
+
+
 
         if(
-
-            dClose<100 ||
-
-            dUpper<100 ||
-
-            dLower<100
-
+            dClose < 100 ||
+            dUpper < 100 ||
+            dLower < 100
         )
 
-            scenario="Case 2";
+            scenario =
+            "Case 2";
 
     }
 
-    $("#scenario").innerText=scenario;
+
+
+    if($("scenario"))
+        $("scenario").innerText =
+            scenario;
 
 }
+
+
+
+// ===============================
+// SIGNAL
+// ===============================
 
 function determineSignal(price){
 
-    let signal="WAIT";
 
-    let reason="Waiting for confirmation.";
+    if(!currentLevels)
+        return;
 
-    if(price>=currentLevels.upperTDP){
 
-        signal="SELL";
 
-        reason="Price reached Upper TDP.";
+    let signal =
+        "WAIT";
 
-    }
 
-    else if(price<=currentLevels.lowerTDP){
+    let reason =
+        "Waiting for confirmation.";
 
-        signal="BUY";
 
-        reason="Price reached Lower TDP.";
 
-    }
-
-    else if(price>=currentLevels.sp){
+    if(price >= currentLevels.upperTDP){
 
         signal="SELL";
 
-        reason="Price approaching SP.";
+        reason =
+        "Price reached Upper TDP.";
 
     }
 
-    else if(price<=currentLevels.bp){
+
+    else if(price <= currentLevels.lowerTDP){
 
         signal="BUY";
 
-        reason="Price approaching BP.";
+        reason =
+        "Price reached Lower TDP.";
 
     }
 
-    $("#signal").innerText=signal;
 
-    $("#reason").innerText=reason;
+    else if(price >= currentLevels.sp){
 
-    $("#signal").className=signal.toLowerCase();
+        signal="SELL";
+
+        reason =
+        "Price approaching SP.";
+
+    }
+
+
+    else if(price <= currentLevels.bp){
+
+        signal="BUY";
+
+        reason =
+        "Price approaching BP.";
+
+    }
+
+
+
+    if($("signal")){
+
+        $("signal").innerText =
+            signal;
+
+
+        $("signal").className =
+            signal.toLowerCase();
+
+    }
+
+
+
+    if($("reason"))
+        $("reason").innerText =
+            reason;
+
 
 }
+
+
+
+// ===============================
+// DISTANCES
+// ===============================
 
 function updateDistances(price){
 
-    $("#distUpper").innerText=(currentLevels.upperTDP-price).toFixed(2);
 
-    $("#distSP").innerText=(currentLevels.sp-price).toFixed(2);
+    if(!currentLevels)
+        return;
 
-    $("#distClose").innerText=(currentLevels.close-price).toFixed(2);
 
-    $("#distBP").innerText=(currentLevels.bp-price).toFixed(2);
 
-    $("#distLower").innerText=(currentLevels.lowerTDP-price).toFixed(2);
+    if($("distUpper"))
+        $("distUpper").innerText =
+        (currentLevels.upperTDP-price).toFixed(2);
+
+
+
+    if($("distSP"))
+        $("distSP").innerText =
+        (currentLevels.sp-price).toFixed(2);
+
+
+
+    if($("distClose"))
+        $("distClose").innerText =
+        (currentLevels.close-price).toFixed(2);
+
+
+
+    if($("distBP"))
+        $("distBP").innerText =
+        (currentLevels.bp-price).toFixed(2);
+
+
+
+    if($("distLower"))
+        $("distLower").innerText =
+        (currentLevels.lowerTDP-price).toFixed(2);
+
 
 }
 
+
+
+// ===============================
+// HIGHLIGHT LEVEL
+// ===============================
+
 function highlightNearest(price){
 
+
+    if(!currentLevels)
+        return;
+
+
+
     document
-
     .querySelectorAll(".levelCard")
+    .forEach(card =>
+        card.classList.remove("closest")
+    );
 
-    .forEach(card=>card.classList.remove("closest"));
 
-    const distances=[
+
+    const distances = [
 
         {
-
-            card:upperCard,
-
-            d:Math.abs(price-currentLevels.upperTDP)
-
+            card: upperCard,
+            d: Math.abs(
+                price-currentLevels.upperTDP
+            )
         },
 
         {
-
-            card:spCard,
-
-            d:Math.abs(price-currentLevels.sp)
-
+            card: spCard,
+            d: Math.abs(
+                price-currentLevels.sp
+            )
         },
 
         {
-
-            card:closeCard,
-
-            d:Math.abs(price-currentLevels.close)
-
+            card: closeCard,
+            d: Math.abs(
+                price-currentLevels.close
+            )
         },
 
         {
-
-            card:bpCard,
-
-            d:Math.abs(price-currentLevels.bp)
-
+            card: bpCard,
+            d: Math.abs(
+                price-currentLevels.bp
+            )
         },
 
         {
-
-            card:lowerCard,
-
-            d:Math.abs(price-currentLevels.lowerTDP)
-
+            card: lowerCard,
+            d: Math.abs(
+                price-currentLevels.lowerTDP
+            )
         }
 
     ];
 
-    distances.sort((a,b)=>a.d-b.d);
 
-    distances[0].card.classList.add("closest");
+
+    distances
+    .filter(x => x.card)
+    .sort(
+        (a,b)=>a.d-b.d
+    )[0]
+    .card
+    .classList
+    .add("closest");
 
 }
