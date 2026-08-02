@@ -139,6 +139,7 @@ header p{
 .searchWrapper{
 
     position:relative;
+    z-index:1000;
 
 }
 
@@ -180,6 +181,8 @@ header p{
 
     right:0;
 
+    width:100%;
+
     margin-top:8px;
 
     background:white;
@@ -217,6 +220,8 @@ header p{
     transition:.18s;
 
     border-bottom:1px solid #F2F2F2;
+
+    -webkit-tap-highlight-color:transparent;
 
 }
 
