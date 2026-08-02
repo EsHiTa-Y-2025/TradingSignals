@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+    <title>Reduction Tape Scanner</title>
+
+    <link rel="stylesheet"
+        href="css/style.css">
+
+</head>
+
+<body>
+
+    <div class="container">
+
+        <header>
+
+            <h1>Reduction Tape Scanner</h1>
+
+            <p>
+                Calculate Trade Point and monitor live market conditions.
+            </p>
+
+        </header>
+
+        <!-- ===================================== -->
+        <!-- SEARCH -->
+        <!-- ===================================== -->
+
+        <section class="card">
+
+            <h2>Choose Symbol</h2>
+
+            <div class="row">
+
+                <input
+                    id="symbolInput"
+                    type="text"
+                    placeholder="Search Apple, Reliance, Tesla...">
+
+                <button id="searchButton">
+
+                    Search
+
+                </button>
+
+            </div>
+
+            <div
+                id="searchResults"
+                class="results">
+
+            </div>
+
+        </section>
+
+        <!-- ===================================== -->
+        <!-- DATE RANGE -->
+        <!-- ===================================== -->
+
+        <section class="card">
+
+            <h2>Select Date Range</h2>
+
+            <div class="row">
+
+                <div>
+
+                    <label>
+
+                        Start Date
+
+                    </label>
+
+                    <input
+                        id="startDate"
+                        type="date">
+
+                </div>
+
+                <div>
+
+                    <label>
+
+                        End Date
+
+                    </label>
+
+                    <input
+                        id="endDate"
+                        type="date">
+
+                </div>
+
+                <button id="calculateButton">
+
+                    Calculate
+
+                </button>
+
+            </div>
+
+        </section>
+
+        <!-- ===================================== -->
+        <!-- CALCULATION -->
+        <!-- ===================================== -->
+
+        <section class="card">
+
+            <h2>
+
+                Reduction Tape
+
+            </h2>
+
+            <div
+                id="calculationCard"
+                class="grid">
+
+                <div>
+
+                    <span>High</span>
+
+                    <strong id="high">
+                        -
+                    </strong>
+
+                </div>
+
+                <div>
+
+                    <span>Low</span>
+
+                    <strong id="low">
+                        -
+                    </strong>
+
+                </div>
+
+                <div>
+
+                    <span>Spread</span>
+
+                    <strong id="spread">
+                        -
+                    </strong>
+
+                </div>
+
+                <div>
+
+                    <span>Digital Root</span>
+
+                    <strong id="root">
+                        -
+                    </strong>
+
+                </div>
+
+                <div class="highlight">
+
+                    <span>Trade Point</span>
+
+                    <strong id="tradePoint">
+                        -
+                    </strong>
+
+                </div>
+
+                <div class="highlight">
+
+                    <span>Close</span>
+
+                    <strong id="close">
+                        -
+                    </strong>
+
+                </div>
+
+                <div>
+
+                    <span>Upper TDP</span>
+
+                    <strong id="upper">
+                        -
+                    </strong>
+
+                </div>
+
+                <div>
+
+                    <span>Lower TDP</span>
+
+                    <strong id="lower">
+                        -
+                    </strong>
+
+                </div>
+
+                <div>
+
+                    <span>SP</span>
+
+                    <strong id="sp">
+                        -
+                    </strong>
+
+                </div>
+
+                <div>
+
+                    <span>BP</span>
+
+                    <strong id="bp">
+                        -
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </section>
+
+        <!-- ===================================== -->
+        <!-- LIVE -->
+        <!-- ===================================== -->
+
+        <section class="card">
+
+            <h2>
+
+                Live Monitor
+
+            </h2>
+
+            <div class="grid">
+
+                <div>
+
+                    <span>
+
+                        Live Price
+
+                    </span>
+
+                    <strong id="livePrice">
+
+                        -
+
+                    </strong>
+
+                </div>
+
+                <div>
+
+                    <span>
+
+                        Scenario
+
+                    </span>
+
+                    <strong id="scenario">
+
+                        -
+
+                    </strong>
+
+                </div>
+
+                <div>
+
+                    <span>
+
+                        Signal
+
+                    </span>
+
+                    <strong id="signal">
+
+                        WAIT
+
+                    </strong>
+
+                </div>
+
+                <div>
+
+                    <span>
+
+                        Reason
+
+                    </span>
+
+                    <strong id="reason">
+
+                        -
+
+                    </strong>
+
+                </div>
+
+                <div>
+
+                    <span>
+
+                        Distance Upper
+
+                    </span>
+
+                    <strong id="distUpper">
+
+                        -
+
+                    </strong>
+
+                </div>
+
+                <div>
+
+                    <span>
+
+                        Distance Lower
+
+                    </span>
+
+                    <strong id="distLower">
+
+                        -
+
+                    </strong>
+
+                </div>
+
+                <div>
+
+                    <span>
+
+                        Distance SP
+
+                    </span>
+
+                    <strong id="distSP">
+
+                        -
+
+                    </strong>
+
+                </div>
+
+                <div>
+
+                    <span>
+
+                        Distance BP
+
+                    </span>
+
+                    <strong id="distBP">
+
+                        -
+
+                    </strong>
+
+                </div>
+
+            </div>
+
+        </section>
+
+    </div>
+
+    <script src="js/api.js"></script>
+
+    <script src="js/dashboard.js"></script>
+
+    <script src="js/websocket.js"></script>
+
+</body>
+
+</html>
