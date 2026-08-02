@@ -1,318 +1,310 @@
-// ============================================
-// Dashboard
-// ============================================
+const API = window.API_BASE || "";
 
-let selectedSymbol = null;
-let liveTimer = null;
+let currentLevels = null;
+let currentSymbol = null;
+let monitorTimer = null;
 
-// --------------------------------------------
-// Elements
-// --------------------------------------------
+const $ = (id) => document.getElementById(id);
 
-const symbolInput = document.getElementById("symbolInput");
-const searchButton = document.getElementById("searchButton");
-const searchResults = document.getElementById("searchResults");
+const upperCard = document.querySelector(".upper");
+const spCard = document.querySelector(".sp");
+const closeCard = document.querySelector(".close");
+const bpCard = document.querySelector(".bp");
+const lowerCard = document.querySelector(".lower");
 
-const startDate = document.getElementById("startDate");
-const endDate = document.getElementById("endDate");
+$("#calculateBtn").addEventListener("click", calculateLevels);
+$("#startMonitoring").addEventListener("click", startMonitoring);
+$("#searchBtn").addEventListener("click", searchSymbol);
 
-const calculateButton = document.getElementById("calculateButton");
+async function searchSymbol() {
 
-// Calculation Card
-
-const high = document.getElementById("high");
-const low = document.getElementById("low");
-const spread = document.getElementById("spread");
-const root = document.getElementById("root");
-const tradePoint = document.getElementById("tradePoint");
-const close = document.getElementById("close");
-const upper = document.getElementById("upper");
-const lower = document.getElementById("lower");
-const sp = document.getElementById("sp");
-const bp = document.getElementById("bp");
-
-// Live Card
-
-const livePrice = document.getElementById("livePrice");
-const scenario = document.getElementById("scenario");
-const signal = document.getElementById("signal");
-const reason = document.getElementById("reason");
-
-const distUpper = document.getElementById("distUpper");
-const distLower = document.getElementById("distLower");
-const distSP = document.getElementById("distSP");
-const distBP = document.getElementById("distBP");
-
-// --------------------------------------------
-// Default Dates
-// --------------------------------------------
-
-(function () {
-
-    const today = new Date();
-
-    const past = new Date();
-
-    past.setMonth(today.getMonth() - 1);
-
-    endDate.value = today.toISOString().split("T")[0];
-
-    startDate.value = past.toISOString().split("T")[0];
-
-})();
-
-// --------------------------------------------
-// Search
-// --------------------------------------------
-
-searchButton.addEventListener("click", performSearch);
-
-symbolInput.addEventListener("keydown", e => {
-
-    if (e.key === "Enter") {
-
-        performSearch();
-
-    }
-
-});
-
-async function performSearch() {
-
-    const query = symbolInput.value.trim();
+    const query = $("#symbolInput").value.trim();
 
     if (!query) return;
 
-    searchResults.innerHTML = "Searching...";
-
     try {
 
-        const results = await searchCompany(query);
+        const res = await fetch(`${API}/search?q=${query}`);
 
-        renderResults(results);
+        const data = await res.json();
 
-    }
+        if (!data.length) {
 
-    catch (err) {
+            alert("Symbol not found");
 
-        alert(err.message);
+            return;
+
+        }
+
+        currentSymbol = data[0];
+
+        $("#symbolInput").value =
+            currentSymbol.name + " (" + currentSymbol.symbol + ")";
+
+    } catch (err) {
+
+        console.log(err);
 
     }
 
 }
 
-function renderResults(results) {
+async function calculateLevels() {
 
-    searchResults.innerHTML = "";
+    if (!currentSymbol) {
 
-    if (results.length === 0) {
-
-        searchResults.innerHTML = "<p>No symbols found.</p>";
+        alert("Select a symbol first");
 
         return;
 
     }
 
-    results.forEach(item => {
+    const from = $("#fromDate").value;
 
-        const div = document.createElement("div");
+    const to = $("#toDate").value;
 
-        div.className = "result-item";
+    if (!from || !to) {
 
-        div.innerHTML = `
-
-            <strong>${item.symbol}</strong>
-
-            <br>
-
-            ${item.name}
-
-            <br>
-
-            <small>${item.exchange}</small>
-
-        `;
-
-        div.onclick = () => {
-
-            selectedSymbol = item.symbol;
-
-            symbolInput.value = item.name;
-
-            searchResults.innerHTML = "";
-
-        };
-
-        searchResults.appendChild(div);
-
-    });
-
-}
-
-// --------------------------------------------
-// Calculate
-// --------------------------------------------
-
-calculateButton.addEventListener("click", calculate);
-
-async function calculate() {
-
-    if (!selectedSymbol) {
-
-        alert("Please choose a symbol.");
+        alert("Select dates");
 
         return;
 
     }
-
-    calculateButton.disabled = true;
 
     try {
 
-        const data = await calculateTape(
+        const res = await fetch(
 
-            selectedSymbol,
-
-            startDate.value,
-
-            endDate.value
+            `${API}/tape?symbol=${currentSymbol.symbol}&from=${from}&to=${to}`
 
         );
 
-        updateCalculationCard(data);
+        currentLevels = await res.json();
 
-        startLiveMonitoring();
+        $("#upperTdp").innerText = currentLevels.upperTDP.toFixed(2);
+
+        $("#sp").innerText = currentLevels.sp.toFixed(2);
+
+        $("#close").innerText = currentLevels.close.toFixed(2);
+
+        $("#bp").innerText = currentLevels.bp.toFixed(2);
+
+        $("#lowerTdp").innerText = currentLevels.lowerTDP.toFixed(2);
+
+    } catch (e) {
+
+        console.log(e);
 
     }
-
-    catch (err) {
-
-        alert(err.message);
-
-    }
-
-    calculateButton.disabled = false;
 
 }
 
-// --------------------------------------------
-// Calculation Card
-// --------------------------------------------
+async function startMonitoring() {
 
-function updateCalculationCard(data) {
+    if (!currentLevels) {
 
-    const calc = data.calculation;
+        alert("Calculate levels first.");
 
-    const ind = data.indicators;
-
-    high.textContent = calc.high;
-
-    low.textContent = calc.low;
-
-    spread.textContent = calc.spread;
-
-    root.textContent = calc.digitalRoot;
-
-    tradePoint.textContent = calc.tradePoint;
-
-    close.textContent = ind.close;
-
-    upper.textContent = ind.upperTDP;
-
-    lower.textContent = ind.lowerTDP;
-
-    sp.textContent = ind.SP;
-
-    bp.textContent = ind.BP;
-
-}
-
-// --------------------------------------------
-// Live Monitor
-// --------------------------------------------
-
-function startLiveMonitoring() {
-
-    if (liveTimer) {
-
-        clearInterval(liveTimer);
+        return;
 
     }
+
+    if (monitorTimer)
+
+        clearInterval(monitorTimer);
 
     updateLive();
 
-    liveTimer = setInterval(
-
-        updateLive,
-
-        1000
-
-    );
+    monitorTimer = setInterval(updateLive, 2000);
 
 }
 
 async function updateLive() {
 
-    if (!selectedSymbol) return;
-
     try {
 
-        const data = await getLiveData(
+        const res = await fetch(
 
-            selectedSymbol,
-
-            startDate.value,
-
-            endDate.value
+            `${API}/live?symbol=${currentSymbol.symbol}`
 
         );
 
-        const monitor = data.monitor;
+        const data = await res.json();
 
-        livePrice.textContent = data.live.price;
+        $("#livePrice").innerText = data.price.toFixed(2);
 
-        scenario.textContent = monitor.scenario;
+        $("#marketOpen").innerText = data.open.toFixed(2);
 
-        signal.textContent = monitor.signal;
+        determineScenario(data.open);
 
-        reason.textContent = monitor.reason;
+        determineSignal(data.price);
 
-        distUpper.textContent = monitor.distances.upperTDP;
+        updateDistances(data.price);
 
-        distLower.textContent = monitor.distances.lowerTDP;
+        highlightNearest(data.price);
 
-        distSP.textContent = monitor.distances.SP;
+    }
 
-        distBP.textContent = monitor.distances.BP;
+    catch(err){
 
-        signal.className = "";
+        console.log(err);
 
-        switch (monitor.signal) {
+    }
 
-            case "BUY":
+}
 
-                signal.classList.add("buy");
+function determineScenario(open){
 
-                break;
+    let scenario="Case 1";
 
-            case "SELL":
+    if(open>currentLevels.upperTDP)
 
-                signal.classList.add("sell");
+        scenario="Case 3 (Above Upper TDP)";
 
-                break;
+    else if(open<currentLevels.lowerTDP)
 
-            default:
+        scenario="Case 3 (Below Lower TDP)";
 
-                signal.classList.add("wait");
+    else{
+
+        const dClose=Math.abs(open-currentLevels.close);
+
+        const dUpper=Math.abs(open-currentLevels.upperTDP);
+
+        const dLower=Math.abs(open-currentLevels.lowerTDP);
+
+        if(
+
+            dClose<100 ||
+
+            dUpper<100 ||
+
+            dLower<100
+
+        )
+
+            scenario="Case 2";
+
+    }
+
+    $("#scenario").innerText=scenario;
+
+}
+
+function determineSignal(price){
+
+    let signal="WAIT";
+
+    let reason="Waiting for confirmation.";
+
+    if(price>=currentLevels.upperTDP){
+
+        signal="SELL";
+
+        reason="Price reached Upper TDP.";
+
+    }
+
+    else if(price<=currentLevels.lowerTDP){
+
+        signal="BUY";
+
+        reason="Price reached Lower TDP.";
+
+    }
+
+    else if(price>=currentLevels.sp){
+
+        signal="SELL";
+
+        reason="Price approaching SP.";
+
+    }
+
+    else if(price<=currentLevels.bp){
+
+        signal="BUY";
+
+        reason="Price approaching BP.";
+
+    }
+
+    $("#signal").innerText=signal;
+
+    $("#reason").innerText=reason;
+
+    $("#signal").className=signal.toLowerCase();
+
+}
+
+function updateDistances(price){
+
+    $("#distUpper").innerText=(currentLevels.upperTDP-price).toFixed(2);
+
+    $("#distSP").innerText=(currentLevels.sp-price).toFixed(2);
+
+    $("#distClose").innerText=(currentLevels.close-price).toFixed(2);
+
+    $("#distBP").innerText=(currentLevels.bp-price).toFixed(2);
+
+    $("#distLower").innerText=(currentLevels.lowerTDP-price).toFixed(2);
+
+}
+
+function highlightNearest(price){
+
+    document
+
+    .querySelectorAll(".levelCard")
+
+    .forEach(card=>card.classList.remove("closest"));
+
+    const distances=[
+
+        {
+
+            card:upperCard,
+
+            d:Math.abs(price-currentLevels.upperTDP)
+
+        },
+
+        {
+
+            card:spCard,
+
+            d:Math.abs(price-currentLevels.sp)
+
+        },
+
+        {
+
+            card:closeCard,
+
+            d:Math.abs(price-currentLevels.close)
+
+        },
+
+        {
+
+            card:bpCard,
+
+            d:Math.abs(price-currentLevels.bp)
+
+        },
+
+        {
+
+            card:lowerCard,
+
+            d:Math.abs(price-currentLevels.lowerTDP)
 
         }
 
-    }
+    ];
 
-    catch (err) {
+    distances.sort((a,b)=>a.d-b.d);
 
-        console.error(err);
-
-    }
+    distances[0].card.classList.add("closest");
 
 }
