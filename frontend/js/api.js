@@ -5,7 +5,7 @@
 const API_BASE =
     location.hostname === "localhost"
         ? "http://localhost:3000"
-        : "https://YOUR-RENDER-BACKEND.onrender.com";
+        : "https://tradingsignals-5g76.onrender.com";
 
 // =========================================
 // Generic Request
