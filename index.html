@@ -1,387 +1,370 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Reduction Tape Scanner</title>
 
-    <link rel="stylesheet"
-        href="css/style.css">
+    <link rel="stylesheet" href="css/style.css">
 
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 
 <body>
 
-    <div class="container">
+<div class="container">
 
-        <header>
+    <header>
 
-            <h1>Reduction Tape Scanner</h1>
+        <h1>Reduction Tape Scanner</h1>
 
-            <p>
-                Calculate Trade Point and monitor live market conditions.
-            </p>
+        <p>
+            Live Trading Scanner
+        </p>
 
-        </header>
+    </header>
 
-        <!-- ===================================== -->
-        <!-- SEARCH -->
-        <!-- ===================================== -->
 
-        <section class="card">
+    <!-- SEARCH -->
 
-            <h2>Choose Symbol</h2>
+    <section class="card">
 
-            <div class="row">
+        <h2>Symbol</h2>
+
+        <div class="searchRow">
+
+            <input
+                id="symbolInput"
+                placeholder="Search Symbol..."
+                autocomplete="off"
+            >
+
+            <button id="searchBtn">
+
+                Search
+
+            </button>
+
+        </div>
+
+    </section>
+
+
+    <!-- DATE -->
+
+    <section class="card">
+
+        <h2>Date Range</h2>
+
+        <div class="dateRow">
+
+            <div>
+
+                <label>From</label>
 
                 <input
-                    id="symbolInput"
-                    type="text"
-                    placeholder="Search Apple, Reliance, Tesla...">
-
-                <button id="searchButton">
-
-                    Search
-
-                </button>
+                    type="date"
+                    id="fromDate"
+                >
 
             </div>
 
-            <div
-                id="searchResults"
-                class="results">
+            <div>
+
+                <label>To</label>
+
+                <input
+                    type="date"
+                    id="toDate"
+                >
 
             </div>
 
-        </section>
+            <button id="calculateBtn">
 
-        <!-- ===================================== -->
-        <!-- DATE RANGE -->
-        <!-- ===================================== -->
+                Calculate
 
-        <section class="card">
+            </button>
 
-            <h2>Select Date Range</h2>
+        </div>
 
-            <div class="row">
+    </section>
 
-                <div>
 
-                    <label>
 
-                        Start Date
+    <!-- LEVELS -->
 
-                    </label>
+    <section class="card">
 
-                    <input
-                        id="startDate"
-                        type="date">
+        <h2>Today's Levels</h2>
 
-                </div>
+        <div class="levelsGrid">
 
-                <div>
+            <div class="levelCard upper">
 
-                    <label>
+                <span>
 
-                        End Date
+                    Upper TDP
 
-                    </label>
+                </span>
 
-                    <input
-                        id="endDate"
-                        type="date">
+                <h3 id="upperTdp">
 
-                </div>
+                    —
 
-                <button id="calculateButton">
-
-                    Calculate
-
-                </button>
+                </h3>
 
             </div>
 
-        </section>
 
-        <!-- ===================================== -->
-        <!-- CALCULATION -->
-        <!-- ===================================== -->
+            <div class="levelCard sp">
 
-        <section class="card">
+                <span>
 
-            <h2>
+                    SP
 
-                Reduction Tape
+                </span>
 
-            </h2>
+                <h3 id="sp">
 
-            <div
-                id="calculationCard"
-                class="grid">
+                    —
 
-                <div>
-
-                    <span>High</span>
-
-                    <strong id="high">
-                        -
-                    </strong>
-
-                </div>
-
-                <div>
-
-                    <span>Low</span>
-
-                    <strong id="low">
-                        -
-                    </strong>
-
-                </div>
-
-                <div>
-
-                    <span>Spread</span>
-
-                    <strong id="spread">
-                        -
-                    </strong>
-
-                </div>
-
-                <div>
-
-                    <span>Digital Root</span>
-
-                    <strong id="root">
-                        -
-                    </strong>
-
-                </div>
-
-                <div class="highlight">
-
-                    <span>Trade Point</span>
-
-                    <strong id="tradePoint">
-                        -
-                    </strong>
-
-                </div>
-
-                <div class="highlight">
-
-                    <span>Close</span>
-
-                    <strong id="close">
-                        -
-                    </strong>
-
-                </div>
-
-                <div>
-
-                    <span>Upper TDP</span>
-
-                    <strong id="upper">
-                        -
-                    </strong>
-
-                </div>
-
-                <div>
-
-                    <span>Lower TDP</span>
-
-                    <strong id="lower">
-                        -
-                    </strong>
-
-                </div>
-
-                <div>
-
-                    <span>SP</span>
-
-                    <strong id="sp">
-                        -
-                    </strong>
-
-                </div>
-
-                <div>
-
-                    <span>BP</span>
-
-                    <strong id="bp">
-                        -
-                    </strong>
-
-                </div>
+                </h3>
 
             </div>
 
-        </section>
 
-        <!-- ===================================== -->
-        <!-- LIVE -->
-        <!-- ===================================== -->
+            <div class="levelCard close">
 
-        <section class="card">
+                <span>
 
-            <h2>
+                    Close
 
-                Live Monitor
+                </span>
 
-            </h2>
+                <h3 id="close">
 
-            <div class="grid">
+                    —
 
-                <div>
-
-                    <span>
-
-                        Live Price
-
-                    </span>
-
-                    <strong id="livePrice">
-
-                        -
-
-                    </strong>
-
-                </div>
-
-                <div>
-
-                    <span>
-
-                        Scenario
-
-                    </span>
-
-                    <strong id="scenario">
-
-                        -
-
-                    </strong>
-
-                </div>
-
-                <div>
-
-                    <span>
-
-                        Signal
-
-                    </span>
-
-                    <strong id="signal">
-
-                        WAIT
-
-                    </strong>
-
-                </div>
-
-                <div>
-
-                    <span>
-
-                        Reason
-
-                    </span>
-
-                    <strong id="reason">
-
-                        -
-
-                    </strong>
-
-                </div>
-
-                <div>
-
-                    <span>
-
-                        Distance Upper
-
-                    </span>
-
-                    <strong id="distUpper">
-
-                        -
-
-                    </strong>
-
-                </div>
-
-                <div>
-
-                    <span>
-
-                        Distance Lower
-
-                    </span>
-
-                    <strong id="distLower">
-
-                        -
-
-                    </strong>
-
-                </div>
-
-                <div>
-
-                    <span>
-
-                        Distance SP
-
-                    </span>
-
-                    <strong id="distSP">
-
-                        -
-
-                    </strong>
-
-                </div>
-
-                <div>
-
-                    <span>
-
-                        Distance BP
-
-                    </span>
-
-                    <strong id="distBP">
-
-                        -
-
-                    </strong>
-
-                </div>
+                </h3>
 
             </div>
 
-        </section>
 
-    </div>
+            <div class="levelCard bp">
 
-    <script src="js/api.js"></script>
+                <span>
 
-    <script src="js/dashboard.js"></script>
+                    BP
 
-    <script src="js/websocket.js"></script>
+                </span>
+
+                <h3 id="bp">
+
+                    —
+
+                </h3>
+
+            </div>
+
+
+            <div class="levelCard lower">
+
+                <span>
+
+                    Lower TDP
+
+                </span>
+
+                <h3 id="lowerTdp">
+
+                    —
+
+                </h3>
+
+            </div>
+
+        </div>
+
+    </section>
+
+
+
+    <!-- LIVE -->
+
+    <section class="card">
+
+        <h2>
+
+            Live Monitor
+
+        </h2>
+
+        <div class="monitorGrid">
+
+            <div>
+
+                <label>
+
+                    Live Price
+
+                </label>
+
+                <h3 id="livePrice">
+
+                    —
+
+                </h3>
+
+            </div>
+
+            <div>
+
+                <label>
+
+                    Today's Open
+
+                </label>
+
+                <h3 id="marketOpen">
+
+                    —
+
+                </h3>
+
+            </div>
+
+            <div>
+
+                <label>
+
+                    Scenario
+
+                </label>
+
+                <h3 id="scenario">
+
+                    —
+
+                </h3>
+
+            </div>
+
+            <div>
+
+                <label>
+
+                    Signal
+
+                </label>
+
+                <h3 id="signal">
+
+                    WAIT
+
+                </h3>
+
+            </div>
+
+            <div class="reasonBox">
+
+                <label>
+
+                    Reason
+
+                </label>
+
+                <p id="reason">
+
+                    Waiting...
+
+                </p>
+
+            </div>
+
+        </div>
+
+        <hr>
+
+        <div class="distanceGrid">
+
+            <div>
+
+                Upper TDP
+
+                <span id="distUpper">
+
+                    —
+
+                </span>
+
+            </div>
+
+            <div>
+
+                SP
+
+                <span id="distSP">
+
+                    —
+
+                </span>
+
+            </div>
+
+            <div>
+
+                Close
+
+                <span id="distClose">
+
+                    —
+
+                </span>
+
+            </div>
+
+            <div>
+
+                BP
+
+                <span id="distBP">
+
+                    —
+
+                </span>
+
+            </div>
+
+            <div>
+
+                Lower TDP
+
+                <span id="distLower">
+
+                    —
+
+                </span>
+
+            </div>
+
+        </div>
+
+        <button id="startMonitoring">
+
+            Start Monitoring
+
+        </button>
+
+    </section>
+
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/dashboard.js"></script>
+<script src="js/websocket.js"></script>
 
 </body>
-
 </html>
