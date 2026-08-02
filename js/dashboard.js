@@ -1,5 +1,5 @@
 // const API = window.API_BASE || "";
-const API = "https://tradingview-backend-kwrp.onrender.com";
+const API = "https://tradingsignals-5g76.onrender.com";
 
 let currentLevels = null;
 let currentSymbol = null;
