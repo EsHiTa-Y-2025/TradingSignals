@@ -1,574 +1,472 @@
-// const API = window.API_BASE || "";
+// ==========================================
+// Reduction Tape Dashboard
+// Version 2 - Compatible with Render Backend
+// ==========================================
+
 const API = "https://tradingsignals-5g76.onrender.com";
 
-let currentLevels = null;
 let currentSymbol = null;
+let currentLevels = null;
 let monitorTimer = null;
-
 
 const $ = (id) => document.getElementById(id);
 
-
+// -------------------------
 // Cards
+// -------------------------
+
 const upperCard = document.querySelector(".upper");
 const spCard = document.querySelector(".sp");
 const closeCard = document.querySelector(".close");
 const bpCard = document.querySelector(".bp");
 const lowerCard = document.querySelector(".lower");
 
+// -------------------------
+// Buttons
+// -------------------------
 
-// Safe event listeners
-const calculateBtn = $("calculateBtn");
-const startMonitoringBtn = $("startMonitoring");
-const searchBtn = $("searchBtn");
+$("searchBtn")?.addEventListener("click", searchSymbol);
+$("calculateBtn")?.addEventListener("click", calculateLevels);
+$("startMonitoring")?.addEventListener("click", startMonitoring);
 
-
-if (calculateBtn) {
-    calculateBtn.addEventListener(
-        "click",
-        calculateLevels
-    );
-}
-
-
-if (startMonitoringBtn) {
-    startMonitoringBtn.addEventListener(
-        "click",
-        startMonitoring
-    );
-}
-
-
-if (searchBtn) {
-    searchBtn.addEventListener(
-        "click",
-        searchSymbol
-    );
-}
-
-
-
-// ===============================
+// =========================================
 // SEARCH SYMBOL
-// ===============================
+// =========================================
 
 async function searchSymbol() {
 
-    const input = $("symbolInput");
+    const query = $("symbolInput")?.value.trim();
 
-    if (!input) return;
-
-
-    const query = input.value.trim();
-
-
-    if (!query)
+    if (!query) {
+        alert("Enter a stock name.");
         return;
-
+    }
 
     try {
 
-        const res = await fetch(
-            `${API}/search?q=${query}`
+        const response = await fetch(
+            `${API}/api/search?q=${encodeURIComponent(query)}`
         );
 
+        const data = await response.json();
 
-        const data = await res.json();
+        if (!data.success || data.results.length === 0) {
 
-
-        if (!data.length) {
-
-            alert("Symbol not found");
+            alert("No matching symbol found.");
 
             return;
 
         }
 
+        currentSymbol = data.results[0];
 
-        currentSymbol = data[0];
-
-
-        input.value =
+        $("symbolInput").value =
             `${currentSymbol.name} (${currentSymbol.symbol})`;
 
-
     }
-    catch(err){
 
-        console.log(err);
+    catch (err) {
+
+        console.error(err);
+
+        alert("Unable to search symbol.");
 
     }
 
 }
 
-
-
-// ===============================
-// CALCULATE LEVELS
-// ===============================
+// =========================================
+// CALCULATE TAPE
+// =========================================
 
 async function calculateLevels() {
 
+    if (!currentSymbol) {
 
-    if(!currentSymbol){
-
-        alert(
-            "Select a symbol first"
-        );
+        alert("Search and select a symbol first.");
 
         return;
 
     }
 
+    const start = $("fromDate").value;
 
+    const end = $("toDate").value;
 
-    const from = $("fromDate")?.value;
+    if (!start || !end) {
 
-    const to = $("toDate")?.value;
-
-
-
-    if(!from || !to){
-
-        alert(
-            "Select dates"
-        );
+        alert("Please choose both dates.");
 
         return;
 
     }
 
+    try {
 
+        const response = await fetch(
 
-    try{
-
-
-        const res = await fetch(
-
-            `${API}/tape?symbol=${currentSymbol.symbol}&from=${from}&to=${to}`
+            `${API}/api/tape?symbol=${encodeURIComponent(currentSymbol.symbol)}&start=${start}&end=${end}`
 
         );
 
+        const data = await response.json();
 
+        if (!data.success) {
 
-        currentLevels = await res.json();
+            alert(data.error);
 
+            return;
 
+        }
 
-        if($("upperTdp"))
-            $("upperTdp").innerText =
-                currentLevels.upperTDP.toFixed(2);
+        currentLevels = data.indicators;
 
+        $("upperTdp").innerText =
+            currentLevels.upperTDP.toFixed(2);
 
+        $("sp").innerText =
+            currentLevels.SP.toFixed(2);
 
-        if($("sp"))
-            $("sp").innerText =
-                currentLevels.sp.toFixed(2);
+        $("close").innerText =
+            currentLevels.close.toFixed(2);
 
+        $("bp").innerText =
+            currentLevels.BP.toFixed(2);
 
-
-        if($("close"))
-            $("close").innerText =
-                currentLevels.close.toFixed(2);
-
-
-
-        if($("bp"))
-            $("bp").innerText =
-                currentLevels.bp.toFixed(2);
-
-
-
-        if($("lowerTdp"))
-            $("lowerTdp").innerText =
-                currentLevels.lowerTDP.toFixed(2);
-
-
+        $("lowerTdp").innerText =
+            currentLevels.lowerTDP.toFixed(2);
 
     }
-    catch(err){
 
-        console.log(err);
+    catch (err) {
+
+        console.error(err);
+
+        alert("Calculation failed.");
 
     }
 
 }
 
+// =========================================
+// START LIVE MONITOR
+// =========================================
 
+function startMonitoring() {
 
-// ===============================
-// START MONITORING
-// ===============================
+    if (!currentLevels) {
 
-function startMonitoring(){
-
-
-    if(!currentLevels){
-
-        alert(
-            "Calculate levels first."
-        );
+        alert("Calculate tape first.");
 
         return;
 
     }
 
+    if (monitorTimer) {
 
-
-    if(monitorTimer)
         clearInterval(monitorTimer);
 
-
+    }
 
     updateLive();
 
+    monitorTimer = setInterval(
 
+        updateLive,
 
-    monitorTimer =
-        setInterval(
-            updateLive,
-            2000
-        );
+        2000
 
-}
-
-
-
-// ===============================
-// LIVE PRICE
-// ===============================
-
-async function updateLive(){
-
-
-    if(!currentSymbol)
-        return;
-
-
-
-    try{
-
-
-        const res = await fetch(
-
-            `${API}/live?symbol=${currentSymbol.symbol}`
-
-        );
-
-
-
-        const data =
-            await res.json();
-
-
-
-        if($("livePrice"))
-            $("livePrice").innerText =
-                data.price.toFixed(2);
-
-
-
-        if($("marketOpen"))
-            $("marketOpen").innerText =
-                data.open.toFixed(2);
-
-
-
-        determineScenario(data.open);
-
-
-        determineSignal(data.price);
-
-
-        updateDistances(data.price);
-
-
-        highlightNearest(data.price);
-
-
-
-    }
-    catch(err){
-
-        console.log(err);
-
-    }
-
-}
-
-
-
-// ===============================
-// SCENARIO
-// ===============================
-
-function determineScenario(open){
-
-
-    if(!currentLevels)
-        return;
-
-
-
-    let scenario =
-        "Case 1";
-
-
-
-    if(open > currentLevels.upperTDP)
-
-        scenario =
-        "Case 3 (Above Upper TDP)";
-
-
-
-    else if(open < currentLevels.lowerTDP)
-
-        scenario =
-        "Case 3 (Below Lower TDP)";
-
-
-
-    else{
-
-
-        const dClose =
-            Math.abs(
-                open-currentLevels.close
-            );
-
-
-        const dUpper =
-            Math.abs(
-                open-currentLevels.upperTDP
-            );
-
-
-        const dLower =
-            Math.abs(
-                open-currentLevels.lowerTDP
-            );
-
-
-
-        if(
-            dClose < 100 ||
-            dUpper < 100 ||
-            dLower < 100
-        )
-
-            scenario =
-            "Case 2";
-
-    }
-
-
-
-    if($("scenario"))
-        $("scenario").innerText =
-            scenario;
-
-}
-
-
-
-// ===============================
-// SIGNAL
-// ===============================
-
-function determineSignal(price){
-
-
-    if(!currentLevels)
-        return;
-
-
-
-    let signal =
-        "WAIT";
-
-
-    let reason =
-        "Waiting for confirmation.";
-
-
-
-    if(price >= currentLevels.upperTDP){
-
-        signal="SELL";
-
-        reason =
-        "Price reached Upper TDP.";
-
-    }
-
-
-    else if(price <= currentLevels.lowerTDP){
-
-        signal="BUY";
-
-        reason =
-        "Price reached Lower TDP.";
-
-    }
-
-
-    else if(price >= currentLevels.sp){
-
-        signal="SELL";
-
-        reason =
-        "Price approaching SP.";
-
-    }
-
-
-    else if(price <= currentLevels.bp){
-
-        signal="BUY";
-
-        reason =
-        "Price approaching BP.";
-
-    }
-
-
-
-    if($("signal")){
-
-        $("signal").innerText =
-            signal;
-
-
-        $("signal").className =
-            signal.toLowerCase();
-
-    }
-
-
-
-    if($("reason"))
-        $("reason").innerText =
-            reason;
-
-
-}
-
-
-
-// ===============================
-// DISTANCES
-// ===============================
-
-function updateDistances(price){
-
-
-    if(!currentLevels)
-        return;
-
-
-
-    if($("distUpper"))
-        $("distUpper").innerText =
-        (currentLevels.upperTDP-price).toFixed(2);
-
-
-
-    if($("distSP"))
-        $("distSP").innerText =
-        (currentLevels.sp-price).toFixed(2);
-
-
-
-    if($("distClose"))
-        $("distClose").innerText =
-        (currentLevels.close-price).toFixed(2);
-
-
-
-    if($("distBP"))
-        $("distBP").innerText =
-        (currentLevels.bp-price).toFixed(2);
-
-
-
-    if($("distLower"))
-        $("distLower").innerText =
-        (currentLevels.lowerTDP-price).toFixed(2);
-
-
-}
-
-
-
-// ===============================
-// HIGHLIGHT LEVEL
-// ===============================
-
-function highlightNearest(price){
-
-
-    if(!currentLevels)
-        return;
-
-
-
-    document
-    .querySelectorAll(".levelCard")
-    .forEach(card =>
-        card.classList.remove("closest")
     );
 
+}
 
+// =========================================
+// LIVE PRICE UPDATE
+// =========================================
 
-    const distances = [
+async function updateLive() {
+
+    if (!currentSymbol)
+        return;
+
+    const start = $("fromDate").value;
+    const end = $("toDate").value;
+
+    try {
+
+        const response = await fetch(
+
+            `${API}/api/live?symbol=${encodeURIComponent(currentSymbol.symbol)}&start=${start}&end=${end}`
+
+        );
+
+        const data = await response.json();
+
+        if (!data.success) {
+
+            console.error(data.error);
+
+            return;
+
+        }
+
+        // -----------------------
+        // Live Market Data
+        // -----------------------
+
+        $("livePrice").innerText =
+            data.live.price.toFixed(2);
+
+        $("marketOpen").innerText =
+            data.live.open.toFixed(2);
+
+        // -----------------------
+        // Scenario
+        // -----------------------
+
+        $("scenario").innerText =
+            data.monitor.scenario;
+
+        // -----------------------
+        // Signal
+        // -----------------------
+
+        $("signal").innerText =
+            data.monitor.signal;
+
+        $("reason").innerText =
+            data.monitor.reason;
+
+        // Signal colours
+
+        $("signal").classList.remove(
+            "buy",
+            "sell",
+            "wait"
+        );
+
+        switch (data.monitor.signal) {
+
+            case "BUY":
+                $("signal").classList.add("buy");
+                break;
+
+            case "SELL":
+                $("signal").classList.add("sell");
+                break;
+
+            default:
+                $("signal").classList.add("wait");
+
+        }
+
+        // -----------------------
+        // Distance Table
+        // -----------------------
+
+        $("distUpper").innerText =
+            data.monitor.distances.upperTDP.toFixed(2);
+
+        $("distSP").innerText =
+            data.monitor.distances.SP.toFixed(2);
+
+        $("distClose").innerText =
+            data.monitor.distances.close.toFixed(2);
+
+        $("distBP").innerText =
+            data.monitor.distances.BP.toFixed(2);
+
+        $("distLower").innerText =
+            data.monitor.distances.lowerTDP.toFixed(2);
+
+        // -----------------------
+        // Highlight nearest level
+        // -----------------------
+
+        highlightNearest(
+            data.live.price
+        );
+
+    }
+
+    catch (err) {
+
+        console.error(err);
+
+    }
+
+}
+
+// =========================================
+// HIGHLIGHT NEAREST LEVEL
+// =========================================
+
+function highlightNearest(price) {
+
+    if (!currentLevels)
+        return;
+
+    document
+        .querySelectorAll(".levelCard")
+        .forEach(card =>
+            card.classList.remove("closest")
+        );
+
+    const levels = [
 
         {
             card: upperCard,
-            d: Math.abs(
-                price-currentLevels.upperTDP
-            )
+            value: currentLevels.upperTDP
         },
 
         {
             card: spCard,
-            d: Math.abs(
-                price-currentLevels.sp
-            )
+            value: currentLevels.SP
         },
 
         {
             card: closeCard,
-            d: Math.abs(
-                price-currentLevels.close
-            )
+            value: currentLevels.close
         },
 
         {
             card: bpCard,
-            d: Math.abs(
-                price-currentLevels.bp
-            )
+            value: currentLevels.BP
         },
 
         {
             card: lowerCard,
-            d: Math.abs(
-                price-currentLevels.lowerTDP
-            )
+            value: currentLevels.lowerTDP
         }
 
     ];
 
+    let nearest = null;
+    let minDistance = Number.MAX_VALUE;
 
+    for (const level of levels) {
 
-    distances
-    .filter(x => x.card)
-    .sort(
-        (a,b)=>a.d-b.d
-    )[0]
-    .card
-    .classList
-    .add("closest");
+        if (!level.card)
+            continue;
+
+        const distance = Math.abs(price - level.value);
+
+        if (distance < minDistance) {
+
+            minDistance = distance;
+
+            nearest = level;
+
+        }
+
+    }
+
+    if (nearest) {
+
+        nearest.card.classList.add("closest");
+
+    }
 
 }
+
+// =========================================
+// RESET DASHBOARD
+// =========================================
+
+function resetDashboard() {
+
+    currentLevels = null;
+
+    if (monitorTimer) {
+
+        clearInterval(monitorTimer);
+
+        monitorTimer = null;
+
+    }
+
+    [
+        "upperTdp",
+        "sp",
+        "close",
+        "bp",
+        "lowerTdp",
+        "livePrice",
+        "marketOpen",
+        "scenario",
+        "signal",
+        "reason",
+        "distUpper",
+        "distSP",
+        "distClose",
+        "distBP",
+        "distLower"
+    ].forEach(id => {
+
+        const element = $(id);
+
+        if (element)
+            element.innerText = "-";
+
+    });
+
+    document
+        .querySelectorAll(".levelCard")
+        .forEach(card =>
+            card.classList.remove("closest")
+        );
+
+}
+
+// =========================================
+// ENTER KEY SUPPORT
+// =========================================
+
+$("symbolInput")?.addEventListener("keydown", (event) => {
+
+    if (event.key === "Enter") {
+
+        searchSymbol();
+
+    }
+
+});
+
+// =========================================
+// AUTO STOP WHEN TAB HIDDEN
+// =========================================
+
+document.addEventListener("visibilitychange", () => {
+
+    if (document.hidden && monitorTimer) {
+
+        clearInterval(monitorTimer);
+
+    }
+
+    else if (
+        !document.hidden &&
+        currentLevels
+    ) {
+
+        monitorTimer = setInterval(
+            updateLive,
+            2000
+        );
+
+    }
+
+});
+
+// =========================================
+// STARTUP
+// =========================================
+
+window.addEventListener("load", () => {
+
+    console.log("====================================");
+    console.log(" Reduction Tape Dashboard Loaded");
+    console.log(" Backend:", API);
+    console.log("====================================");
+
+});
