@@ -8,7 +8,7 @@ let tapeData = null;
 let monitorTimer = null;
 let searchTimer = null;
 
-const $ = id => document.getElementById(id);
+const $ = id => document.querySelector(id);
 
 const upperCard = document.querySelector(".upper");
 const spCard = document.querySelector(".sp");
