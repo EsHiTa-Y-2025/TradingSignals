@@ -1,110 +1,453 @@
-import { SCAN_BUFFER } from "../config/constants.js";
 import { round } from "./reduction.js";
 
-function within(price, target, buffer) {
-  return Math.abs(price - target) <= buffer;
+/*
+==================================================
+
+Reduction Tape Scanner
+Scenario Engine V3
+
+==================================================
+*/
+
+function distance(price, level) {
+
+    return round(price - level);
+
 }
 
-function distance(price, target) {
-  return round(price - target);
+function isNear(price, level, buffer) {
+
+    return Math.abs(price - level) <= buffer;
+
 }
 
 export function detectScenario({
-  currentPrice,
-  open,
-  indicators,
+
+    open,
+
+    currentPrice,
+
+    indicators,
+
+    tradePoint,
+
+    previousClose
+
 }) {
-  const {
-    upperTDP,
-    lowerTDP,
-    SP,
-    BP,
-    close,
-  } = indicators;
 
-  let scenario = "WAIT";
-  let signal = "NONE";
-  let reason = "";
+    const {
 
-  // -------------------------
-  // CASE 1
-  // Open between Upper & Lower
-  // -------------------------
+        upperTDP,
 
-  if (open <= upperTDP && open >= lowerTDP) {
+        lowerTDP,
 
-    scenario = "CASE_1";
+        SP,
 
-    if (within(currentPrice, SP, SCAN_BUFFER.SP)) {
-      signal = "SELL";
-      reason = "Price reached SP zone.";
+        BP,
+
+        close
+
+    } = indicators;
+
+    //--------------------------------------------------
+    // Dynamic Watch Zone
+    //--------------------------------------------------
+
+    const WATCH_ZONE = Math.max(
+
+        20,
+
+        round(tradePoint * 2)
+
+    );
+
+    //--------------------------------------------------
+    // Market State
+    //--------------------------------------------------
+
+    let scenario = "";
+
+    let state = "";
+
+    let signal = "WAIT";
+
+    let reason = "";
+
+    let target = "";
+
+    //--------------------------------------------------
+    // CASE 1
+    // Open near Previous Close
+    //--------------------------------------------------
+
+    if (
+
+        Math.abs(open - previousClose) <= 100
+
+    ) {
+
+        scenario = "CASE_1";
+
+        state = "MOVING_FROM_CLOSE";
+
+        if (open >= previousClose) {
+
+            target = "Upper TDP";
+
+            if (
+
+                isNear(
+
+                    currentPrice,
+
+                    upperTDP,
+
+                    WATCH_ZONE
+
+                )
+
+            ) {
+
+                state = "WATCHING_RESISTANCE";
+
+                signal = "SELL";
+
+                reason =
+
+                    "Price entered Upper TDP watch zone.";
+
+            }
+
+            else if (
+
+                currentPrice > upperTDP
+
+            ) {
+
+                state = "BREAKOUT";
+
+                target = "SP";
+
+                signal = "BUY";
+
+                reason =
+
+                    "Upper TDP breakout confirmed.";
+
+            }
+
+        }
+
+        else {
+
+            target = "Lower TDP";
+
+            if (
+
+                isNear(
+
+                    currentPrice,
+
+                    lowerTDP,
+
+                    WATCH_ZONE
+
+                )
+
+            ) {
+
+                state = "WATCHING_SUPPORT";
+
+                signal = "BUY";
+
+                reason =
+
+                    "Price entered Lower TDP watch zone.";
+
+            }
+
+            else if (
+
+                currentPrice < lowerTDP
+
+            ) {
+
+                state = "BREAKDOWN";
+
+                target = "BP";
+
+                signal = "SELL";
+
+                reason =
+
+                    "Lower TDP breakdown confirmed.";
+
+            }
+
+        }
+
     }
 
-    else if (within(currentPrice, lowerTDP, SCAN_BUFFER.LOWER)) {
-      signal = "BUY";
-      reason = "Price reached Lower TDP.";
+    //--------------------------------------------------
+    // CASE 2
+    // Open Inside Range
+    //--------------------------------------------------
+
+    else if (
+
+        open < upperTDP &&
+
+        open > lowerTDP
+
+    ) {
+
+        scenario = "CASE_2";
+
+        state = "RANGE";
+
+        const dUpper =
+
+            Math.abs(
+
+                currentPrice -
+
+                upperTDP
+
+            );
+
+        const dLower =
+
+            Math.abs(
+
+                currentPrice -
+
+                lowerTDP
+
+            );
+
+        if (
+
+            dUpper < dLower
+
+        ) {
+
+            target = "Upper TDP";
+
+            if (
+
+                dUpper <= WATCH_ZONE
+
+            ) {
+
+                signal = "SELL";
+
+                state =
+
+                    "WATCHING_RESISTANCE";
+
+                reason =
+
+                    "Approaching Upper TDP.";
+
+            }
+
+        }
+
+        else {
+
+            target = "Lower TDP";
+
+            if (
+
+                dLower <= WATCH_ZONE
+
+            ) {
+
+                signal = "BUY";
+
+                state =
+
+                    "WATCHING_SUPPORT";
+
+                reason =
+
+                    "Approaching Lower TDP.";
+
+            }
+
+        }
+
     }
-  }
 
-  // -------------------------
-  // CASE 2
-  // Open near Close or TDP
-  // -------------------------
+    //--------------------------------------------------
+    // CASE 3
+    // Gap Outside Range
+    //--------------------------------------------------
 
-  else if (
-    within(open, close, 100) ||
-    within(open, upperTDP, 100) ||
-    within(open, lowerTDP, 100)
-  ) {
+    else {
 
-    scenario = "CASE_2";
+        scenario = "CASE_3";
 
-    if (within(currentPrice, upperTDP, SCAN_BUFFER.UPPER)) {
-      signal = "SELL";
-      reason = "Upper TDP reversal.";
+        if (
+
+            open > upperTDP
+
+        ) {
+
+            state =
+
+                "ABOVE_RANGE";
+
+            target =
+
+                "Upper TDP";
+
+            if (
+
+                isNear(
+
+                    currentPrice,
+
+                    upperTDP,
+
+                    WATCH_ZONE
+
+                )
+
+            ) {
+
+                signal =
+
+                    "BUY";
+
+                state =
+
+                    "PULLBACK";
+
+                reason =
+
+                    "Pullback to Upper TDP.";
+
+            }
+
+        }
+
+        else {
+
+            state =
+
+                "BELOW_RANGE";
+
+            target =
+
+                "Lower TDP";
+
+            if (
+
+                isNear(
+
+                    currentPrice,
+
+                    lowerTDP,
+
+                    WATCH_ZONE
+
+                )
+
+            ) {
+
+                signal =
+
+                    "SELL";
+
+                state =
+
+                    "PULLBACK";
+
+                reason =
+
+                    "Pullback to Lower TDP.";
+
+            }
+
+        }
+
     }
 
-    else if (within(currentPrice, lowerTDP, SCAN_BUFFER.LOWER)) {
-      signal = "BUY";
-      reason = "Lower TDP reversal.";
-    }
-  }
+    //--------------------------------------------------
+    // Distances
+    //--------------------------------------------------
 
-  // -------------------------
-  // CASE 3
-  // Open outside TDP range
-  // -------------------------
+    return {
 
-  else if (open > upperTDP) {
+        scenario,
 
-    scenario = "CASE_3";
+        state,
 
-    if (within(currentPrice, upperTDP, SCAN_BUFFER.UPPER)) {
-      signal = "BUY";
-      reason = "Pullback to Upper TDP.";
-    }
+        signal,
 
-  } else if (open < lowerTDP) {
+        target,
 
-    scenario = "CASE_3";
+        watchZone:
 
-    if (within(currentPrice, lowerTDP, SCAN_BUFFER.LOWER)) {
-      signal = "SELL";
-      reason = "Pullback to Lower TDP.";
-    }
-  }
+            WATCH_ZONE,
 
-  return {
-    scenario,
-    signal,
-    reason,
+        reason,
 
-    distances: {
-      upperTDP: distance(currentPrice, upperTDP),
-      lowerTDP: distance(currentPrice, lowerTDP),
-      SP: distance(currentPrice, SP),
-      BP: distance(currentPrice, BP),
-      close: distance(currentPrice, close),
-    },
-  };
+        distances: {
+
+            upperTDP:
+
+                distance(
+
+                    currentPrice,
+
+                    upperTDP
+
+                ),
+
+            lowerTDP:
+
+                distance(
+
+                    currentPrice,
+
+                    lowerTDP
+
+                ),
+
+            SP:
+
+                distance(
+
+                    currentPrice,
+
+                    SP
+
+                ),
+
+            BP:
+
+                distance(
+
+                    currentPrice,
+
+                    BP
+
+                ),
+
+            close:
+
+                distance(
+
+                    currentPrice,
+
+                    close
+
+                )
+
+        }
+
+    };
+
 }
