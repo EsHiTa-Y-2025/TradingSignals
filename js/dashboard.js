@@ -463,6 +463,18 @@ function startMonitoring() {
 
     }
 
+    if (tapeData.historicalMode) {
+
+        alert(
+            "Historical Mode selected.\n" +
+            "Live monitoring is disabled for past date ranges.\n" +
+            "Select today's date as the range end to enable live monitoring."
+        );
+
+        return;
+
+    }
+
     restartMonitoring();
 
 }
