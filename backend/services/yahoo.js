@@ -1,16 +1,22 @@
+// services/yahoo.js
+
 import cache from "../cache/cache.js";
 import { YAHOO, HEADERS } from "../config/constants.js";
 
 async function fetchJSON(url) {
 
     const response = await fetch(url, {
+
         headers: HEADERS
+
     });
 
     if (!response.ok) {
 
         throw new Error(
+
             `Yahoo request failed (${response.status})`
+
         );
 
     }
@@ -19,256 +25,146 @@ async function fetchJSON(url) {
 
 }
 
-// ============================================
-// Common Aliases
-// ============================================
+// ----------------------------------------------------
+// SEARCH SYMBOLS
+// ----------------------------------------------------
 
-const ALIASES = {
+export async function searchSymbol(query) {
 
-    "sensex": "^BSESN",
-    "bse": "^BSESN",
-    "bse sensex": "^BSESN",
+    const aliases = {
 
-    "nifty": "^NSEI",
-    "nifty50": "^NSEI",
-    "nifty 50": "^NSEI",
+        nifty: "^NSEI",
+        banknifty: "^NSEBANK",
+        sensex: "^BSESN",
+        bitcoin: "BTC-USD",
+        btc: "BTC-USD",
+        ethereum: "ETH-USD",
+        eth: "ETH-USD",
+        gold: "GC=F",
+        silver: "SI=F",
+        crude: "CL=F",
+        oil: "CL=F",
+        usd: "DX-Y.NYB"
 
-    "bank nifty": "^NSEBANK",
-    "nifty bank": "^NSEBANK",
-    "banknifty": "^NSEBANK",
+    };
 
-    "dow": "^DJI",
-    "dow jones": "^DJI",
+    const q = query.trim().toLowerCase();
 
-    "nasdaq": "^IXIC",
+    const key = `search:${q}`;
 
-    "s&p500": "^GSPC",
-    "s&p 500": "^GSPC",
-    "sp500": "^GSPC",
+    const cached = cache.get(key);
 
-    "ftse": "^FTSE",
+    if (cached)
 
-    "nikkei": "^N225",
-
-    "hang seng": "^HSI",
-
-    "dax": "^GDAXI"
-
-};
-
-function scoreResult(result, query){
-
-    const q = query.toLowerCase();
-
-    const symbol =
-        result.symbol.toLowerCase();
-
-    const name =
-        result.name.toLowerCase();
-
-    let score = 0;
-
-    if(symbol === q)
-        score += 1000;
-
-    if(name === q)
-        score += 900;
-
-    if(symbol.startsWith(q))
-        score += 700;
-
-    if(name.startsWith(q))
-        score += 600;
-
-    if(symbol.includes(q))
-        score += 400;
-
-    if(name.includes(q))
-        score += 300;
-
-    if(result.type === "INDEX")
-        score += 30;
-
-    return score;
-
-}
-
-// ============================================
-// SEARCH
-// ============================================
-
-export async function searchSymbol(query){
-
-    query = query.trim();
-
-    if(!query)
-        return [];
-
-    const key =
-        `search:${query.toLowerCase()}`;
-
-    const cached =
-        cache.get(key);
-
-    if(cached)
         return cached;
 
-    // ----------------------------
-    // Alias Search
-    // ----------------------------
+    let finalQuery = query;
 
-    const alias =
-        ALIASES[query.toLowerCase()];
+    if (aliases[q])
 
-    if(alias){
-
-        const url =
-            `${YAHOO.SEARCH}?q=${encodeURIComponent(alias)}&quotesCount=5&newsCount=0`;
-
-        const data =
-            await fetchJSON(url);
-
-        const quote =
-            data.quotes?.[0];
-
-        if(quote){
-
-            const results=[{
-
-                symbol:quote.symbol,
-
-                name:
-                    quote.shortname ||
-                    quote.longname ||
-                    quote.symbol,
-
-                exchange:
-                    quote.exchDisp ||
-                    quote.exchange ||
-                    "",
-
-                type:
-                    quote.quoteType
-
-            }];
-
-            cache.set(
-                key,
-                results
-            );
-
-            return results;
-
-        }
-
-    }
-
-    // ----------------------------
-    // Yahoo Search
-    // ----------------------------
+        finalQuery = aliases[q];
 
     const url =
-        `${YAHOO.SEARCH}?q=${encodeURIComponent(query)}&quotesCount=20&newsCount=0`;
 
-    const data =
-        await fetchJSON(url);
+        `${YAHOO.SEARCH}?q=${encodeURIComponent(finalQuery)}&quotesCount=20&newsCount=0`;
 
-    const allowed =
-        new Set([
-            "EQUITY",
-            "ETF",
-            "INDEX"
-        ]);
+    const json = await fetchJSON(url);
 
-    const results =
-        (data.quotes || [])
+    const allowed = new Set([
 
-        .filter(q =>
-            allowed.has(q.quoteType)
-        )
+        "EQUITY",
 
-        .map(q=>({
+        "ETF",
 
-            symbol:q.symbol,
+        "INDEX",
+
+        "CRYPTOCURRENCY",
+
+        "CURRENCY",
+
+        "MUTUALFUND"
+
+    ]);
+
+    const results = [];
+
+    (json.quotes || []).forEach(item => {
+
+        if (!allowed.has(item.quoteType))
+
+            return;
+
+        results.push({
+
+            symbol: item.symbol,
 
             name:
-                q.shortname ||
-                q.longname ||
-                q.symbol,
+
+                item.shortname ||
+
+                item.longname ||
+
+                item.symbol,
 
             exchange:
-                q.exchDisp ||
-                q.exchange ||
+
+                item.exchDisp ||
+
+                item.exchange ||
+
                 "",
 
             type:
-                q.quoteType
 
-        }))
+                item.quoteType
 
-        .sort(
+        });
 
-            (a,b)=>
+    });
 
-                scoreResult(
-                    b,
-                    query
-                )-
-
-                scoreResult(
-                    a,
-                    query
-                )
-
-        )
-
-        .slice(0,10);
-
-    cache.set(
-        key,
-        results
-    );
+    cache.set(key, results);
 
     return results;
 
 }
 
-
-// ============================================
-// HISTORICAL OHLC
-// (Replace your existing getHistoricalData())
-// ============================================
+// ----------------------------------------------------
+// HISTORICAL DATA
+// ----------------------------------------------------
 
 export async function getHistoricalData(
-    symbol,
-    startDate,
-    endDate
-){
 
-    symbol = symbol.trim().toUpperCase();
+    symbol,
+
+    start,
+
+    end
+
+) {
 
     const key =
-        `history:${symbol}:${startDate}:${endDate}`;
 
-    const cached =
-        cache.get(key);
+        `history:${symbol}:${start}:${end}`;
 
-    if(cached)
+    const cached = cache.get(key);
+
+    if (cached)
+
         return cached;
 
     const period1 = Math.floor(
 
-        new Date(
-            startDate + "T00:00:00Z"
-        ).getTime() / 1000
+        new Date(start + "T00:00:00Z")
+
+            .getTime() / 1000
 
     );
 
     const period2 = Math.floor(
 
-        new Date(
-            endDate + "T23:59:59Z"
-        ).getTime() / 1000
+        new Date(end + "T23:59:59Z")
+
+            .getTime() / 1000
 
     );
 
@@ -280,196 +176,200 @@ export async function getHistoricalData(
 
         `&period2=${period2}` +
 
-        `&interval=1d` +
+        `&interval=1d`;
 
-        `&includePrePost=false`;
+    const json = await fetchJSON(url);
 
-    const json =
-        await fetchJSON(url);
-
-    if(json.chart.error){
+    if (json.chart.error)
 
         throw new Error(
-            json.chart.error.description
-        );
 
-    }
+            json.chart.error.description
+
+        );
 
     const result =
+
         json.chart.result?.[0];
 
-    if(!result){
+    if (!result)
 
         throw new Error(
-            "No historical data returned."
+
+            "No historical data."
+
         );
 
-    }
-
     const quote =
+
         result.indicators.quote[0];
 
     const timestamps =
+
         result.timestamp || [];
 
     const candles = [];
 
-    for(let i=0;i<timestamps.length;i++){
+    for (
 
-        if(
+        let i = 0;
 
-            quote.open[i]==null ||
+        i < timestamps.length;
 
-            quote.high[i]==null ||
+        i++
 
-            quote.low[i]==null ||
+    ) {
 
-            quote.close[i]==null
+        if (
 
-        ){
+            quote.high[i] == null ||
+
+            quote.low[i] == null ||
+
+            quote.close[i] == null
+
+        )
 
             continue;
 
-        }
-
         candles.push({
 
-            date:new Date(
+            date:
 
-                timestamps[i]*1000
+                new Date(
 
-            ).toISOString().slice(0,10),
+                    timestamps[i] * 1000
 
-            open:Number(
-                quote.open[i]
-            ),
+                )
 
-            high:Number(
-                quote.high[i]
-            ),
+                .toISOString()
 
-            low:Number(
-                quote.low[i]
-            ),
+                .slice(0, 10),
 
-            close:Number(
-                quote.close[i]
-            ),
+            open: quote.open[i],
 
-            volume:Number(
-                quote.volume[i] || 0
-            )
+            high: quote.high[i],
+
+            low: quote.low[i],
+
+            close: quote.close[i],
+
+            volume: quote.volume[i]
 
         });
 
     }
 
-    candles.sort(
-
-        (a,b)=>
-
-            new Date(a.date)-
-
-            new Date(b.date)
-
-    );
-
     cache.set(
+
         key,
+
         candles
+
     );
 
     return candles;
 
 }
 
-// ============================================
+// ----------------------------------------------------
 // LIVE PRICE
-// (Replace your existing getLivePrice())
-// ============================================
+// ----------------------------------------------------
 
-export async function getLivePrice(symbol){
-
-    symbol = symbol.trim().toUpperCase();
+export async function getLivePrice(symbol) {
 
     const key =
+
         `live:${symbol}`;
 
-    const cached =
-        cache.get(key);
+    const cached = cache.get(key);
 
-    if(cached)
+    if (cached)
+
         return cached;
 
     const url =
 
-        `${YAHOO.CHART}/${encodeURIComponent(symbol)}` +
+        `${YAHOO.CHART}/${encodeURIComponent(symbol)}?range=1d&interval=1m`;
 
-        `?range=1d&interval=1m`;
+    const json = await fetchJSON(url);
 
-    const json =
-        await fetchJSON(url);
-
-    if(json.chart.error){
+    if (json.chart.error)
 
         throw new Error(
-            json.chart.error.description
-        );
 
-    }
+            json.chart.error.description
+
+        );
 
     const result =
+
         json.chart.result?.[0];
 
-    if(!result){
+    if (!result)
 
         throw new Error(
-            "No live price available."
+
+            "No live data."
+
         );
 
-    }
-
     const quote =
+
         result.indicators.quote[0];
 
-    const closes =
-        quote.close.filter(v=>v!=null);
+    const last =
 
-    const highs =
-        quote.high.filter(v=>v!=null);
+        quote.close.length - 1;
 
-    const lows =
-        quote.low.filter(v=>v!=null);
-
-    const opens =
-        quote.open.filter(v=>v!=null);
-
-    const lastPrice =
-        closes[closes.length-1];
-
-    const data={
+    const data = {
 
         symbol,
 
-        price:lastPrice,
+        price:
 
-        open:opens[0],
+            quote.close[last],
 
-        high:Math.max(...highs),
+        open:
 
-        low:Math.min(...lows),
+            quote.open[0],
+
+        high:
+
+            Math.max(
+
+                ...quote.high.filter(
+
+                    x => x != null
+
+                )
+
+            ),
+
+        low:
+
+            Math.min(
+
+                ...quote.low.filter(
+
+                    x => x != null
+
+                )
+
+            ),
 
         timestamp:
 
-            result.timestamp[
-                result.timestamp.length-1
-            ]
+            result.timestamp[last]
 
     };
 
     cache.set(
+
         key,
+
         data
+
     );
 
     return data;
