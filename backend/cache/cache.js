@@ -1,48 +1,47 @@
 class Cache {
-  constructor(ttl = 60000) {
-    this.ttl = ttl;
-    this.store = new Map();
-  }
 
-  get(key) {
-    const item = this.store.get(key);
+    constructor() {
 
-    if (!item) return null;
+        this.store = new Map();
 
-    const expired = Date.now() - item.timestamp > this.ttl;
-
-    if (expired) {
-      this.store.delete(key);
-      return null;
     }
 
-    return item.value;
-  }
+    get(key) {
 
-  set(key, value) {
-    this.store.set(key, {
-      value,
-      timestamp: Date.now(),
-    });
-  }
+        const item = this.store.get(key);
 
-  has(key) {
-    return this.get(key) !== null;
-  }
+        if (!item) return null;
 
-  delete(key) {
-    this.store.delete(key);
-  }
+        if (Date.now() > item.expiry) {
 
-  clear() {
-    this.store.clear();
-  }
+            this.store.delete(key);
 
-  size() {
-    return this.store.size;
-  }
+            return null;
+
+        }
+
+        return item.value;
+
+    }
+
+    set(key, value, ttl = 60000) {
+
+        this.store.set(key, {
+
+            value,
+
+            expiry: Date.now() + ttl
+
+        });
+
+    }
+
+    clear() {
+
+        this.store.clear();
+
+    }
+
 }
 
-const cache = new Cache();
-
-export default cache;
+export default new Cache();
