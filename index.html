@@ -1,7 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
     <meta charset="UTF-8">
+
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
     <title>Reduction Tape Scanner</title>
@@ -9,73 +12,41 @@
     <link rel="stylesheet" href="css/style.css">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
+
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+
 </head>
 
 <body>
 
 <div class="container">
 
-    <!-- <header>
+    <!-- ========================================= -->
+    <!-- HEADER -->
+    <!-- ========================================= -->
+
+    <header>
 
         <h1>Reduction Tape Scanner</h1>
 
         <p>
-            Live Trading Scanner
+            AI Assisted Reduction Tape Market Scanner
         </p>
 
-    </header> -->
-
-    <header>
-    
-        <h1>
-    
-            Reduction Tape Scanner
-    
-        </h1>
-    
-        <p>
-    
-            Search any Stock, ETF or Global Index
-            and monitor Reduction Tape levels in
-            real time.
-    
-        </p>
-    
     </header>
 
+    <!-- ========================================= -->
+    <!-- SYMBOL SEARCH -->
+    <!-- ========================================= -->
 
-    <!-- SEARCH -->
-
-    <!-- <section class="card">
-
-        <h2>Symbol</h2>
-
-        <div class="searchRow">
-
-            <input
-                id="symbolInput"
-                placeholder="Search Symbol..."
-                autocomplete="off"
-            >
-
-            <button id="searchBtn">
-
-                Search
-
-            </button>
-
-        </div>
-
-    </section> -->
     <section class="card">
-    
-        <h2>Stock / Index Search</h2>
-    
-        <!-- <div class="searchWrapper">
-    
+
+        <h2>Search Symbol</h2>
+
+        <div class="searchWrapper">
+
             <div class="searchRow">
-    
+
                 <input
                     id="symbolInput"
                     type="text"
@@ -83,73 +54,24 @@
                     autocomplete="off"
                     spellcheck="false"
                 >
-    
-                <button id="searchBtn">
-    
-                    Search
-    
-                </button>
-    
-            </div>
-    
-            <!-- Suggestions -->
-    
-            <!-- <div
-                id="searchSuggestions"
-                class="suggestions"
-            >
-    
-            </div>
-    
-        </div> --> -->
 
-    <div class="searchWrapper">
-    
-        <div class="searchRow">
-    
-            <input
-                id="symbolInput"
-                type="text"
-                placeholder="Search Company, Symbol or Index..."
-                autocomplete="off"
-                spellcheck="false"
-            >
-    
-            <button id="searchBtn">
-    
-                Search
-    
-            </button>
-    
+                <button id="searchBtn">
+
+                    Search
+
+                </button>
+
+            </div>
+
+            <div id="searchResults"></div>
+
         </div>
-    
-        <div
-            id="searchSuggestions"
-            class="suggestions"
-        ></div>
-    
-    </div>
-    
-        <p class="searchHint">
-    
-            Examples:
-            Apple,
-            AAPL,
-            Reliance,
-            TCS,
-            Sensex,
-            Nifty,
-            Bank Nifty,
-            Nasdaq,
-            Tesla,
-            MSFT
-    
-        </p>
-    
+
     </section>
 
-
-    <!-- DATE -->
+    <!-- ========================================= -->
+    <!-- DATE RANGE -->
+    <!-- ========================================= -->
 
     <section class="card">
 
@@ -189,97 +111,53 @@
 
     </section>
 
-
-
-    <!-- LEVELS -->
+    <!-- ========================================= -->
+    <!-- REDUCTION LEVELS -->
+    <!-- ========================================= -->
 
     <section class="card">
 
-        <h2>Today's Levels</h2>
+        <h2>Reduction Levels</h2>
 
         <div class="levelsGrid">
 
             <div class="levelCard upper">
 
-                <span>
+                <span>Upper TDP</span>
 
-                    Upper TDP
-
-                </span>
-
-                <h3 id="upperTdp">
-
-                    —
-
-                </h3>
+                <h3 id="upperTdp">—</h3>
 
             </div>
-
 
             <div class="levelCard sp">
 
-                <span>
+                <span>SP</span>
 
-                    SP
-
-                </span>
-
-                <h3 id="sp">
-
-                    —
-
-                </h3>
+                <h3 id="sp">—</h3>
 
             </div>
-
 
             <div class="levelCard close">
 
-                <span>
+                <span>Close</span>
 
-                    Close
-
-                </span>
-
-                <h3 id="close">
-
-                    —
-
-                </h3>
+                <h3 id="close">—</h3>
 
             </div>
-
 
             <div class="levelCard bp">
 
-                <span>
+                <span>BP</span>
 
-                    BP
-
-                </span>
-
-                <h3 id="bp">
-
-                    —
-
-                </h3>
+                <h3 id="bp">—</h3>
 
             </div>
 
-
             <div class="levelCard lower">
 
-                <span>
+                <span>Lower TDP</span>
 
-                    Lower TDP
-
-                </span>
-
-                <h3 id="lowerTdp">
-
-                    —
-
-                </h3>
+                <h3 id="lowerTdp">—</h3>
 
             </div>
 
@@ -287,75 +165,81 @@
 
     </section>
 
-
-
-    <!-- LIVE -->
+    <!-- ========================================= -->
+    <!-- MARKET ENGINE -->
+    <!-- ========================================= -->
 
     <section class="card">
 
-        <h2>
+        <h2>Market Engine</h2>
 
-            Live Monitor
+        <div class="engineGrid">
 
-        </h2>
+            <div class="engineCard">
+
+                <label>Direction</label>
+
+                <h3 id="direction">—</h3>
+
+            </div>
+
+            <div class="engineCard">
+
+                <label>State</label>
+
+                <h3 id="scenario">—</h3>
+
+            </div>
+
+            <div class="engineCard">
+
+                <label>Current Target</label>
+
+                <h3 id="currentTarget">—</h3>
+
+            </div>
+
+            <div class="engineCard">
+
+                <label>Next Target</label>
+
+                <h3 id="nextTarget">—</h3>
+
+            </div>
+
+        </div>
+
+    </section>
+
+    <!-- ========================================= -->
+    <!-- LIVE MONITOR -->
+    <!-- ========================================= -->
+
+    <section class="card">
+
+        <h2>Live Monitor</h2>
 
         <div class="monitorGrid">
 
             <div>
 
-                <label>
+                <label>Live Price</label>
 
-                    Live Price
-
-                </label>
-
-                <h3 id="livePrice">
-
-                    —
-
-                </h3>
+                <h3 id="livePrice">—</h3>
 
             </div>
 
             <div>
 
-                <label>
+                <label>Today's Open</label>
 
-                    Today's Open
-
-                </label>
-
-                <h3 id="marketOpen">
-
-                    —
-
-                </h3>
+                <h3 id="marketOpen">—</h3>
 
             </div>
 
             <div>
 
-                <label>
-
-                    Scenario
-
-                </label>
-
-                <h3 id="scenario">
-
-                    —
-
-                </h3>
-
-            </div>
-
-            <div>
-
-                <label>
-
-                    Signal
-
-                </label>
+                <label>Signal</label>
 
                 <h3 id="signal">
 
@@ -365,13 +249,33 @@
 
             </div>
 
+            <div>
+
+                <label>Watch Zone</label>
+
+                <h3 id="watchZone">—</h3>
+
+            </div>
+
+            <div>
+
+                <label>Breakout Buffer</label>
+
+                <h3 id="breakoutBuffer">—</h3>
+
+            </div>
+
+            <div>
+
+                <label>Reversal Buffer</label>
+
+                <h3 id="reversalBuffer">—</h3>
+
+            </div>
+
             <div class="reasonBox">
 
-                <label>
-
-                    Reason
-
-                </label>
+                <label>Reason</label>
 
                 <p id="reason">
 
@@ -460,11 +364,9 @@
 </div>
 
 <script src="js/api.js"></script>
-<!-- <script src="js/dashboard.js"></script> -->
-<!-- <script src="js/websocket.js"></script> -->
-<!-- <script type="module" src="websocket.js"></script> -->
-<!-- <script type="module" src="./dashboard.js"></script> -->
-<script type="module" src="./js/dashboard.js"></script>
+
+<script src="js/dashboard.js"></script>
 
 </body>
+
 </html>
