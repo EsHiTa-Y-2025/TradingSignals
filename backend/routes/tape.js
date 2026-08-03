@@ -1,40 +1,32 @@
+// routes/tape.js
+
 import express from "express";
 
 import { getHistoricalData } from "../services/yahoo.js";
-
 import { calculateTradePoint } from "../calculations/reduction.js";
-import { calculateIndicators } from "../calculations/indicators.js";
+import {
+    calculateIndicators,
+    calculateDistances
+} from "../calculations/indicators.js";
 import { detectScenario } from "../calculations/scenarios.js";
 
 const router = express.Router();
 
-/*
-=======================================================
-
-GET /api/tape
-
-/api/tape?symbol=AAPL&start=2025-01-01&end=2025-03-01
-
-=======================================================
-*/
+// -----------------------------------------------------
+// GET /api/tape
+// -----------------------------------------------------
 
 router.get("/", async (req, res) => {
 
     try {
 
-        //----------------------------------------
-        // Query
-        //----------------------------------------
-
         const symbol = (req.query.symbol || "")
             .trim()
             .toUpperCase();
 
-        const start = (req.query.start || "")
-            .trim();
+        const start = (req.query.start || "").trim();
 
-        const end = (req.query.end || "")
-            .trim();
+        const end = (req.query.end || "").trim();
 
         if (!symbol) {
 
@@ -54,15 +46,11 @@ router.get("/", async (req, res) => {
 
                 success: false,
 
-                error: "Start and End dates required."
+                error: "Start and End dates are required."
 
             });
 
         }
-
-        //----------------------------------------
-        // Selected Range
-        //----------------------------------------
 
         const candles = await getHistoricalData(
 
@@ -86,93 +74,19 @@ router.get("/", async (req, res) => {
 
         }
 
-        //----------------------------------------
-        // Reduction Range
-        //----------------------------------------
-
         const high = Math.max(
-
             ...candles.map(c => c.high)
-
         );
 
         const low = Math.min(
-
             ...candles.map(c => c.low)
-
         );
 
         const lastCandle =
-
             candles[candles.length - 1];
 
-        //----------------------------------------
-        // Next Day
-        //----------------------------------------
-
-        const nextDay = new Date(end);
-
-        nextDay.setDate(
-            nextDay.getDate() + 1
-        );
-
-        const nextStart =
-            nextDay
-            .toISOString()
-            .slice(0,10);
-
-        const nextEnd = nextStart;
-
-        let nextOpen = null;
-
-        let historicalMode = false;
-
-        try{
-
-            const nextCandles =
-                await getHistoricalData(
-
-                    symbol,
-
-                    nextStart,
-
-                    nextEnd
-
-                );
-
-            if(nextCandles.length){
-
-                nextOpen =
-                    nextCandles[0].open;
-
-                historicalMode = true;
-
-            }
-
-        }
-
-        catch{
-
-            historicalMode = false;
-
-        }
-
-        //----------------------------------------
-        // Reduction
-        //----------------------------------------
-
         const reduction =
-            calculateTradePoint(
-
-                high,
-
-                low
-
-            );
-
-        //----------------------------------------
-        // Levels
-        //----------------------------------------
+            calculateTradePoint(high, low);
 
         const indicators =
             calculateIndicators({
@@ -181,92 +95,75 @@ router.get("/", async (req, res) => {
 
                 low,
 
-                close:
-                    lastCandle.close,
+                close: lastCandle.close,
 
                 tradePoint:
                     reduction.tradePoint
 
             });
 
-        //----------------------------------------
-        // Historical Prediction
-        //----------------------------------------
+        const today =
+            new Date()
+                .toISOString()
+                .slice(0, 10);
+
+        const historicalMode =
+            end !== today;
 
         let prediction = null;
 
-        if(historicalMode){
+        let nextOpen = null;
+
+        if (historicalMode && candles.length >= 2) {
+
+            const nextDay =
+                candles[candles.length - 1];
+
+            nextOpen =
+                nextDay.open;
 
             prediction =
                 detectScenario({
 
-                    previousClose:
-                        lastCandle.close,
+                    currentPrice: nextOpen,
 
-                    open:
-                        nextOpen,
+                    open: nextOpen,
 
-                    currentPrice:
-                        nextOpen,
-
-                    indicators,
-
-                    tradePoint:
-                        reduction.tradePoint
+                    indicators
 
                 });
 
         }
 
-        //----------------------------------------
-        // Response
-        //----------------------------------------
-
         res.json({
 
-            success:true,
-
-            historicalMode,
+            success: true,
 
             symbol,
 
-            period:{
+            start,
 
-                start,
+            end,
 
-                end
+            historicalMode,
 
-            },
+            nextOpen,
 
             candlesUsed:
                 candles.length,
 
-            reduction:{
-
-                high,
-
-                low,
-
-                spread:
-                    reduction.spread,
-
-                digitalRoot:
-                    reduction.digitalRoot,
-
-                tradePoint:
-                    reduction.tradePoint,
-
-                reductionSteps:
-                    reduction.reductionSteps
-
-            },
+            reduction,
 
             indicators,
 
-            previousClose:
-                lastCandle.close,
+            distances:
+                calculateDistances(
 
-            nextOpen,
+                    lastCandle.close,
+
+                    indicators
+
+                ),
 
             prediction
 
@@ -274,15 +171,15 @@ router.get("/", async (req, res) => {
 
     }
 
-    catch(error){
+    catch (err) {
 
-        console.error(error);
+        console.error(err);
 
         res.status(500).json({
 
-            success:false,
+            success: false,
 
-            error:error.message
+            error: err.message
 
         });
 
