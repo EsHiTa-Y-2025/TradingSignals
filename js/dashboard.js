@@ -1,8 +1,12 @@
+// dashboard.js
+// PART 1/6
+
 const API = "https://tradingsignals-5g76.onrender.com/api";
 
 let currentSymbol = null;
 let tapeData = null;
 let monitorTimer = null;
+let searchTimer = null;
 
 const $ = id => document.getElementById(id);
 
@@ -12,9 +16,173 @@ const closeCard = document.querySelector(".close");
 const bpCard = document.querySelector(".bp");
 const lowerCard = document.querySelector(".lower");
 
-$("#searchBtn")?.addEventListener("click", searchSymbol);
-$("#calculateBtn")?.addEventListener("click", calculateTape);
-$("#startMonitoring")?.addEventListener("click", startMonitoring);
+document.addEventListener("DOMContentLoaded", () => {
+
+    $("#searchBtn")?.addEventListener("click", searchSymbol);
+
+    $("#calculateBtn")?.addEventListener("click", calculateLevels);
+
+    $("#startMonitoring")?.addEventListener("click", startMonitoring);
+
+    $("#symbolInput")?.addEventListener("input", handleSearchTyping);
+
+    $("#symbolInput")?.addEventListener("keydown", e => {
+
+        if (e.key === "Enter") {
+
+            e.preventDefault();
+
+            searchSymbol();
+
+        }
+
+    });
+
+});
+
+function clearMonitor() {
+
+    if (monitorTimer) {
+
+        clearInterval(monitorTimer);
+
+        monitorTimer = null;
+
+    }
+
+}
+
+function clearSearchResults() {
+
+    const box = $("#searchResults");
+
+    if (box)
+
+        box.innerHTML = "";
+
+}
+
+function showMessage(text) {
+
+    console.log(text);
+
+}
+
+async function handleSearchTyping() {
+
+    clearTimeout(searchTimer);
+
+    const query = $("#symbolInput").value.trim();
+
+    if (query.length < 2) {
+
+        clearSearchResults();
+
+        return;
+
+    }
+
+    searchTimer = setTimeout(() => {
+
+        searchAutocomplete(query);
+
+    }, 250);
+
+}
+
+// dashboard.js
+// PART 2/6
+
+async function searchAutocomplete(query) {
+
+    try {
+
+        const res = await fetch(
+
+            `${API}/search?q=${encodeURIComponent(query)}`
+
+        );
+
+        const json = await res.json();
+
+        if (!json.success) return;
+
+        renderSearchResults(json.results);
+
+    }
+
+    catch (err) {
+
+        console.error(err);
+
+    }
+
+}
+
+function renderSearchResults(results) {
+
+    const box = $("#searchResults");
+
+    if (!box) return;
+
+    box.innerHTML = "";
+
+    if (!results.length) {
+
+        box.innerHTML = `
+            <div class="searchItem">
+                No results found
+            </div>
+        `;
+
+        return;
+
+    }
+
+    results.forEach(item => {
+
+        const div = document.createElement("div");
+
+        div.className = "searchItem";
+
+        div.innerHTML = `
+
+            <div class="symbol">
+
+                ${item.symbol}
+
+            </div>
+
+            <div class="name">
+
+                ${item.name}
+
+            </div>
+
+            <div class="exchange">
+
+                ${item.exchange}
+
+            </div>
+
+        `;
+
+        div.onclick = () => {
+
+            currentSymbol = item;
+
+            $("#symbolInput").value =
+                `${item.name} (${item.symbol})`;
+
+            clearSearchResults();
+
+        };
+
+        box.appendChild(div);
+
+    });
+
+}
 
 async function searchSymbol() {
 
@@ -32,9 +200,17 @@ async function searchSymbol() {
 
         const json = await res.json();
 
-        if (!json.success || !json.results.length) {
+        if (!json.success) {
 
-            alert("Symbol not found");
+            alert("Search failed.");
+
+            return;
+
+        }
+
+        if (!json.results.length) {
+
+            alert("No matching symbol found.");
 
             return;
 
@@ -45,23 +221,28 @@ async function searchSymbol() {
         $("#symbolInput").value =
             `${currentSymbol.name} (${currentSymbol.symbol})`;
 
+        clearSearchResults();
+
     }
 
     catch (err) {
 
-        console.log(err);
+        console.error(err);
 
-        alert("Search failed");
+        alert("Unable to search symbol.");
 
     }
 
 }
 
-async function calculateTape() {
+// dashboard.js
+// PART 3/6
+
+async function calculateLevels() {
 
     if (!currentSymbol) {
 
-        alert("Search a symbol first.");
+        alert("Select a symbol first.");
 
         return;
 
@@ -73,69 +254,87 @@ async function calculateTape() {
 
     if (!start || !end) {
 
-        alert("Choose a date range.");
+        alert("Select a date range.");
 
         return;
 
     }
 
+    clearMonitor();
+
     try {
 
         const res = await fetch(
 
-            `${API}/tape?symbol=${currentSymbol.symbol}&start=${start}&end=${end}`
+            `${API}/tape?symbol=${encodeURIComponent(currentSymbol.symbol)}&start=${start}&end=${end}`
 
         );
 
-        tapeData = await res.json();
+        const json = await res.json();
 
-        if (!tapeData.success) {
+        if (!json.success) {
 
-            alert(tapeData.error);
+            alert(json.error);
 
             return;
 
         }
 
-        loadLevels();
+        tapeData = json;
 
-        if (tapeData.historicalMode) {
+        const i = json.indicators;
+
+        $("#upperTdp").innerText = i.upperTDP.toFixed(2);
+
+        $("#sp").innerText = i.SP.toFixed(2);
+
+        $("#close").innerText = i.close.toFixed(2);
+
+        $("#bp").innerText = i.BP.toFixed(2);
+
+        $("#lowerTdp").innerText = i.lowerTDP.toFixed(2);
+
+        if (json.historicalMode) {
 
             showHistoricalPrediction();
 
+            return;
+
         }
+
+        restartMonitoring();
 
     }
 
     catch (err) {
 
-        console.log(err);
+        console.error(err);
+
+        alert("Calculation failed.");
 
     }
 
 }
 
-function loadLevels() {
-
-    const L = tapeData.indicators;
-
-    $("#upperTdp").innerText = L.upperTDP.toFixed(2);
-
-    $("#sp").innerText = L.SP.toFixed(2);
-
-    $("#close").innerText = L.close.toFixed(2);
-
-    $("#bp").innerText = L.BP.toFixed(2);
-
-    $("#lowerTdp").innerText = L.lowerTDP.toFixed(2);
-
-}
-
 function showHistoricalPrediction() {
 
-    const engine = tapeData.prediction;
+    const p = tapeData.prediction;
 
-    if (!engine) return;
+    if (!p) return;
+
+    $("#direction").innerText = p.direction;
+
+    $("#scenario").innerText = p.state;
+
+    $("#currentTarget").innerText = p.target;
+
+    $("#nextTarget").innerText = p.nextTarget;
+
+    $("#watchZone").innerText = p.watchZone;
+
+    $("#breakoutBuffer").innerText = p.breakoutBuffer;
+
+    $("#reversalBuffer").innerText = p.reversalBuffer;
 
     $("#livePrice").innerText =
         tapeData.nextOpen.toFixed(2);
@@ -143,49 +342,27 @@ function showHistoricalPrediction() {
     $("#marketOpen").innerText =
         tapeData.nextOpen.toFixed(2);
 
-    $("#scenario").innerText =
-        engine.state;
-
     $("#signal").innerText =
-        engine.signal;
-
-    $("#reason").innerText =
-        engine.reason;
+        p.signal;
 
     $("#signal").className =
-        engine.signal.toLowerCase();
+        p.signal.toLowerCase();
 
-    updateDistances(engine.distances);
+    $("#reason").innerText =
+        p.reason;
 
-    highlightTarget(engine.target);
+    updateDistances(p.distances);
+
+    highlightTarget(p.target);
 
 }
 
-function startMonitoring() {
+// dashboard.js
+// PART 4/6
 
-    if (!tapeData) {
+function restartMonitoring() {
 
-        alert("Calculate levels first.");
-
-        return;
-
-    }
-
-    if (tapeData.historicalMode) {
-
-        alert(
-            "Historical Mode selected.\nLive monitoring is disabled."
-        );
-
-        return;
-
-    }
-
-    if (monitorTimer) {
-
-        clearInterval(monitorTimer);
-
-    }
+    clearMonitor();
 
     updateLive();
 
@@ -201,29 +378,22 @@ function startMonitoring() {
 
 async function updateLive() {
 
+    if (!currentSymbol) return;
+
     try {
 
-        const start =
-            $("#fromDate").value;
-
-        const end =
-            $("#toDate").value;
+        const start = $("#fromDate").value;
+        const end = $("#toDate").value;
 
         const res = await fetch(
 
-            `${API}/live?symbol=${currentSymbol.symbol}&start=${start}&end=${end}`
+            `${API}/live?symbol=${encodeURIComponent(currentSymbol.symbol)}&start=${start}&end=${end}`
 
         );
 
         const json = await res.json();
 
-        if (!json.success) {
-
-            console.log(json.error);
-
-            return;
-
-        }
+        if (!json.success) return;
 
         $("#livePrice").innerText =
             json.live.price.toFixed(2);
@@ -231,78 +401,112 @@ async function updateLive() {
         $("#marketOpen").innerText =
             json.live.open.toFixed(2);
 
+        $("#direction").innerText =
+            json.engine.direction;
+
         $("#scenario").innerText =
             json.engine.state;
+
+        $("#currentTarget").innerText =
+            json.engine.target;
+
+        $("#nextTarget").innerText =
+            json.engine.nextTarget;
+
+        $("#watchZone").innerText =
+            json.engine.watchZone;
+
+        $("#breakoutBuffer").innerText =
+            json.engine.breakoutBuffer;
+
+        $("#reversalBuffer").innerText =
+            json.engine.reversalBuffer;
 
         $("#signal").innerText =
             json.engine.signal;
 
-        $("#reason").innerText =
-            json.engine.reason;
-
         $("#signal").className =
             json.engine.signal.toLowerCase();
 
+        $("#reason").innerText =
+            json.engine.reason;
+
         updateDistances(
+
             json.distances
+
         );
 
         highlightTarget(
+
             json.engine.target
+
         );
 
     }
 
     catch (err) {
 
-        console.log(err);
+        console.error(err);
 
     }
 
 }
 
+function startMonitoring() {
+
+    if (!tapeData) {
+
+        alert("Calculate levels first.");
+
+        return;
+
+    }
+
+    restartMonitoring();
+
+}
+
+// dashboard.js
+// PART 5/6
+
 function updateDistances(distances) {
 
     if (!distances) return;
 
-    $("#distUpper").innerText =
-        distances.upperTDP.toFixed(2);
+    if ($("#distUpper"))
+        $("#distUpper").innerText =
+            distances.upperTDP.toFixed(2);
 
-    $("#distSP").innerText =
-        distances.SP.toFixed(2);
+    if ($("#distSP"))
+        $("#distSP").innerText =
+            distances.SP.toFixed(2);
 
-    $("#distClose").innerText =
-        distances.close.toFixed(2);
+    if ($("#distClose"))
+        $("#distClose").innerText =
+            distances.close.toFixed(2);
 
-    $("#distBP").innerText =
-        distances.BP.toFixed(2);
+    if ($("#distBP"))
+        $("#distBP").innerText =
+            distances.BP.toFixed(2);
 
-    $("#distLower").innerText =
-        distances.lowerTDP.toFixed(2);
-
-}
-
-function resetCards() {
-
-    document
-
-        .querySelectorAll(".levelCard")
-
-        .forEach(card =>
-
-            card.classList.remove("closest")
-
-        );
+    if ($("#distLower"))
+        $("#distLower").innerText =
+            distances.lowerTDP.toFixed(2);
 
 }
 
 function highlightTarget(target) {
 
-    resetCards();
+    document
+        .querySelectorAll(".levelCard")
+        .forEach(card =>
+            card.classList.remove("closest")
+        );
 
     switch (target) {
 
-        case "UPPER_TDP":
+        case "Upper TDP":
 
             upperCard?.classList.add("closest");
 
@@ -314,7 +518,7 @@ function highlightTarget(target) {
 
             break;
 
-        case "CLOSE":
+        case "Close":
 
             closeCard?.classList.add("closest");
 
@@ -326,7 +530,7 @@ function highlightTarget(target) {
 
             break;
 
-        case "LOWER_TDP":
+        case "Lower TDP":
 
             lowerCard?.classList.add("closest");
 
@@ -335,22 +539,6 @@ function highlightTarget(target) {
     }
 
 }
-
-function clearMonitor() {
-
-    if (monitorTimer) {
-
-        clearInterval(monitorTimer);
-
-        monitorTimer = null;
-
-    }
-
-}
-
-//-----------------------------------------------------
-// Auto Stop Monitoring
-//-----------------------------------------------------
 
 function isTodaySelected() {
 
@@ -378,38 +566,18 @@ function canStartMonitoring() {
 
 }
 
-//-----------------------------------------------------
-// Refresh Timer
-//-----------------------------------------------------
-
-function restartMonitoring() {
-
-    clearMonitor();
-
-    if (!canStartMonitoring())
-        return;
-
-    updateLive();
-
-    monitorTimer = setInterval(
-
-        updateLive,
-
-        2000
-
-    );
-
-}
-
-//-----------------------------------------------------
-// Date Change
-//-----------------------------------------------------
+// dashboard.js
+// PART 6/6
 
 $("#fromDate")?.addEventListener(
 
     "change",
 
-    clearMonitor
+    () => {
+
+        clearMonitor();
+
+    }
 
 );
 
@@ -417,13 +585,13 @@ $("#toDate")?.addEventListener(
 
     "change",
 
-    clearMonitor
+    () => {
+
+        clearMonitor();
+
+    }
 
 );
-
-//-----------------------------------------------------
-// Symbol Change
-//-----------------------------------------------------
 
 $("#symbolInput")?.addEventListener(
 
@@ -439,10 +607,6 @@ $("#symbolInput")?.addEventListener(
 
 );
 
-//-----------------------------------------------------
-// Window Focus
-//-----------------------------------------------------
-
 window.addEventListener(
 
     "focus",
@@ -457,10 +621,6 @@ window.addEventListener(
 
 );
 
-//-----------------------------------------------------
-// Window Blur
-//-----------------------------------------------------
-
 window.addEventListener(
 
     "blur",
@@ -473,9 +633,17 @@ window.addEventListener(
 
 );
 
-//-----------------------------------------------------
-// Page Load
-//-----------------------------------------------------
+window.addEventListener(
+
+    "beforeunload",
+
+    () => {
+
+        clearMonitor();
+
+    }
+
+);
 
 window.addEventListener(
 
@@ -495,14 +663,100 @@ window.addEventListener(
 
 );
 
-//-----------------------------------------------------
-// Before Unload
-//-----------------------------------------------------
+// ------------------------------------
+// Utility
+// ------------------------------------
 
-window.addEventListener(
+function formatNumber(value) {
 
-    "beforeunload",
+    if (
 
-    clearMonitor
+        value === undefined ||
 
-);
+        value === null ||
+
+        isNaN(value)
+
+    )
+
+        return "—";
+
+    return Number(value).toFixed(2);
+
+}
+
+function setText(id, value) {
+
+    const el = $(id);
+
+    if (!el) return;
+
+    el.innerText = value;
+
+}
+
+function resetDashboard() {
+
+    [
+
+        "upperTdp",
+
+        "sp",
+
+        "close",
+
+        "bp",
+
+        "lowerTdp",
+
+        "livePrice",
+
+        "marketOpen",
+
+        "direction",
+
+        "scenario",
+
+        "currentTarget",
+
+        "nextTarget",
+
+        "watchZone",
+
+        "breakoutBuffer",
+
+        "reversalBuffer",
+
+        "distUpper",
+
+        "distSP",
+
+        "distClose",
+
+        "distBP",
+
+        "distLower"
+
+    ].forEach(id => {
+
+        setText(id, "—");
+
+    });
+
+    setText("signal", "WAIT");
+
+    setText("reason", "Waiting...");
+
+    document
+
+        .querySelectorAll(".levelCard")
+
+        .forEach(card =>
+
+            card.classList.remove("closest")
+
+        );
+
+}
+
+resetDashboard();
