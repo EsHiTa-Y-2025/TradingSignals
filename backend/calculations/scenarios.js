@@ -1,344 +1,304 @@
 // calculations/scenarios.js
 
+import { SCAN_BUFFER } from "../config/constants.js";
 import { round } from "./reduction.js";
 
-const MIN_WATCH_ZONE = 20;
-const CLOSE_BUFFER = 100;
+function within(price, target, buffer) {
 
-function abs(value) {
-    return Math.abs(value);
-}
-
-function distance(price, level) {
-    return round(level - price);
-}
-
-function dynamicWatchZone(tradePoint) {
-    return Math.max(
-        MIN_WATCH_ZONE,
-        round(tradePoint * 2)
-    );
-}
-
-function breakoutBuffer(tradePoint) {
-    return Math.max(
-        10,
-        round(tradePoint * 0.5)
-    );
-}
-
-function reversalBuffer(tradePoint) {
-    return Math.max(
-        10,
-        round(tradePoint * 0.5)
-    );
-}
-
-function getDirection(open, previousClose) {
-    if (open > previousClose)
-        return "UP";
-
-    if (open < previousClose)
-        return "DOWN";
-
-    return "NEUTRAL";
-}
-
-function getInitialTarget(direction, indicators) {
-
-    if (direction === "UP")
-        return "UPPER_TDP";
-
-    if (direction === "DOWN")
-        return "LOWER_TDP";
-
-    return "CLOSE";
+    return Math.abs(price - target) <= buffer;
 
 }
 
-function levelValue(target, indicators) {
+function distance(price, target) {
 
-    switch (target) {
-
-        case "UPPER_TDP":
-            return indicators.upperTDP;
-
-        case "LOWER_TDP":
-            return indicators.lowerTDP;
-
-        case "SP":
-            return indicators.SP;
-
-        case "BP":
-            return indicators.BP;
-
-        default:
-            return indicators.close;
-
-    }
-
-}
-
-function nextTarget(target, event) {
-
-    switch (target) {
-
-        case "UPPER_TDP":
-
-            if (event === "BREAKOUT")
-                return "SP";
-
-            if (event === "REVERSAL")
-                return "CLOSE";
-
-            break;
-
-        case "LOWER_TDP":
-
-            if (event === "BREAKDOWN")
-                return "BP";
-
-            if (event === "REVERSAL")
-                return "CLOSE";
-
-            break;
-
-        case "SP":
-
-            return "SP";
-
-        case "BP":
-
-            return "BP";
-
-    }
-
-    return target;
+    return round(target - price);
 
 }
 
 export function detectScenario({
 
-    previousClose,
+    currentPrice,
 
     open,
 
-    currentPrice,
-
-    indicators,
-
-    tradePoint
+    indicators
 
 }) {
 
-    const direction =
-        getDirection(
-            open,
-            previousClose
-        );
+    const {
 
-    const watchZone =
-        dynamicWatchZone(
-            tradePoint
-        );
+        upperTDP,
 
-    const breakout =
-        breakoutBuffer(
-            tradePoint
-        );
+        lowerTDP,
 
-    const reversal =
-        reversalBuffer(
-            tradePoint
-        );
+        SP,
 
-    const target =
-        getInitialTarget(
-            direction,
-            indicators
-        );
+        BP,
 
-    const targetPrice =
-        levelValue(
-            target,
-            indicators
-        );
+        close
 
-    const nearClose =
-        abs(
-            open - previousClose
-        ) <= CLOSE_BUFFER;
+    } = indicators;
 
-    let state = "MOVING";
+    let direction = "NEUTRAL";
+
+    let state = "WAIT";
 
     let signal = "WAIT";
 
-    let reason = "";
+    let reason = "Waiting for confirmation.";
 
-    let next = target;
+    let target = "Close";
 
-    const diff =
-        currentPrice - targetPrice;
+    let nextTarget = "-";
 
-    //------------------------------------------------
-    // WATCH ZONE
-    //------------------------------------------------
+    let watchZone = "±100";
 
-    if (
-        abs(diff) <= watchZone
-    ) {
+    let breakoutBuffer = "200";
 
-        state = "WATCHING";
+    let reversalBuffer = "100";
 
-        reason =
-            "Price entered watch zone.";
+    //--------------------------------------------------
+    // Determine Market Direction
+    //--------------------------------------------------
 
-    }
+    if (open > close) {
 
-    //------------------------------------------------
-    // BREAKOUT
-    //------------------------------------------------
-
-    if (
-        target === "UPPER_TDP" &&
-        diff > breakout
-    ) {
-
-        state = "BREAKOUT";
-
-        signal = "BUY";
-
-        next =
-            nextTarget(
-                target,
-                "BREAKOUT"
-            );
-
-        reason =
-            "Upper TDP breakout confirmed.";
+        direction = "UP";
 
     }
 
-    if (
-        target === "LOWER_TDP" &&
-        diff < -breakout
-    ) {
+    else if (open < close) {
 
-        state = "BREAKDOWN";
-
-        signal = "SELL";
-
-        next =
-            nextTarget(
-                target,
-                "BREAKDOWN"
-            );
-
-        reason =
-            "Lower TDP breakdown confirmed.";
+        direction = "DOWN";
 
     }
 
-    //------------------------------------------------
-    // REVERSAL
-    //------------------------------------------------
+    //--------------------------------------------------
+    // UP TREND
+    //--------------------------------------------------
+
+    if (direction === "UP") {
+
+        if (currentPrice < upperTDP) {
+
+            state = "MOVING";
+
+            target = "Upper TDP";
+
+            nextTarget = "SP";
+
+        }
+
+        else if (
+
+            within(
+
+                currentPrice,
+
+                upperTDP,
+
+                SCAN_BUFFER.UPPER
+
+            )
+
+        ) {
+
+            state = "WATCHING";
+
+            target = "Upper TDP";
+
+            nextTarget = "SP";
+
+            signal = "WAIT";
+
+            reason = "Watching reaction near Upper TDP.";
+
+        }
+
+        else if (currentPrice > upperTDP + 200) {
+
+            state = "BREAKOUT";
+
+            target = "SP";
+
+            nextTarget = "BP";
+
+            signal = "BUY";
+
+            reason = "Confirmed breakout above Upper TDP.";
+
+        }
+
+    }
+
+    //--------------------------------------------------
+    // DOWN TREND
+    //--------------------------------------------------
+
+    else if (direction === "DOWN") {
+
+        if (currentPrice > lowerTDP) {
+
+            state = "MOVING";
+
+            target = "Lower TDP";
+
+            nextTarget = "BP";
+
+        }
+
+        else if (
+
+            within(
+
+                currentPrice,
+
+                lowerTDP,
+
+                SCAN_BUFFER.LOWER
+
+            )
+
+        ) {
+
+            state = "WATCHING";
+
+            target = "Lower TDP";
+
+            nextTarget = "BP";
+
+            signal = "WAIT";
+
+            reason = "Watching reaction near Lower TDP.";
+
+        }
+
+        else if (currentPrice < lowerTDP - 200) {
+
+            state = "BREAKOUT";
+
+            target = "BP";
+
+            nextTarget = "SP";
+
+            signal = "SELL";
+
+            reason = "Confirmed breakout below Lower TDP.";
+
+        }
+
+    }
+
+    //--------------------------------------------------
+    // Reversal Detection
+    //--------------------------------------------------
 
     if (
-        target === "UPPER_TDP" &&
-        diff < -reversal &&
-        abs(diff) <= watchZone
+
+        within(
+
+            currentPrice,
+
+            close,
+
+            100
+
+        )
+
     ) {
 
         state = "REVERSAL";
 
-        signal = "SELL";
+        signal = "WAIT";
 
-        next =
-            nextTarget(
-                target,
-                "REVERSAL"
-            );
+        target = "Close";
+
+        nextTarget = direction === "UP"
+
+            ? "Upper TDP"
+
+            : "Lower TDP";
 
         reason =
-            "Rejected from Upper TDP.";
+
+            "Price is testing previous Close.";
 
     }
 
-    if (
-        target === "LOWER_TDP" &&
-        diff > reversal &&
-        abs(diff) <= watchZone
-    ) {
-
-        state = "REVERSAL";
-
-        signal = "BUY";
-
-        next =
-            nextTarget(
-                target,
-                "REVERSAL"
-            );
-
-        reason =
-            "Rejected from Lower TDP.";
-
-    }
+    //--------------------------------------------------
+    // Return Engine
+    //--------------------------------------------------
 
     return {
 
         direction,
 
-        nearClose,
-
         state,
 
         signal,
 
+        reason,
+
         target,
 
-        targetPrice,
-
-        nextTarget: next,
+        nextTarget,
 
         watchZone,
 
-        breakoutBuffer: breakout,
+        breakoutBuffer,
 
-        reversalBuffer: reversal,
-
-        reason,
+        reversalBuffer,
 
         distances: {
 
             upperTDP:
-                distance(
-                    currentPrice,
-                    indicators.upperTDP
-                ),
 
-            SP:
                 distance(
-                    currentPrice,
-                    indicators.SP
-                ),
 
-            close:
-                distance(
                     currentPrice,
-                    indicators.close
-                ),
 
-            BP:
-                distance(
-                    currentPrice,
-                    indicators.BP
+                    upperTDP
+
                 ),
 
             lowerTDP:
+
                 distance(
+
                     currentPrice,
-                    indicators.lowerTDP
+
+                    lowerTDP
+
+                ),
+
+            SP:
+
+                distance(
+
+                    currentPrice,
+
+                    SP
+
+                ),
+
+            BP:
+
+                distance(
+
+                    currentPrice,
+
+                    BP
+
+                ),
+
+            close:
+
+                distance(
+
+                    currentPrice,
+
+                    close
+
                 )
 
         }
