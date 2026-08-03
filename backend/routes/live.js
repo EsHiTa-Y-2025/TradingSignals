@@ -1,3 +1,5 @@
+// routes/live.js
+
 import express from "express";
 
 import { getHistoricalData } from "../services/yahoo.js";
@@ -5,39 +7,21 @@ import { buildLiveSnapshot } from "../services/livePrice.js";
 
 const router = express.Router();
 
-/*
-=====================================================
-
-GET /api/live
-
-Example
-
-/api/live?symbol=AAPL&start=2025-01-01&end=2025-03-01
-
-=====================================================
-*/
+// -----------------------------------------------------
+// GET /api/live
+// -----------------------------------------------------
 
 router.get("/", async (req, res) => {
 
     try {
 
-        //--------------------------------------------------
-        // Query Parameters
-        //--------------------------------------------------
-
         const symbol = (req.query.symbol || "")
             .trim()
             .toUpperCase();
 
-        const start = (req.query.start || "")
-            .trim();
+        const start = (req.query.start || "").trim();
 
-        const end = (req.query.end || "")
-            .trim();
-
-        //--------------------------------------------------
-        // Validation
-        //--------------------------------------------------
+        const end = (req.query.end || "").trim();
 
         if (!symbol) {
 
@@ -57,15 +41,11 @@ router.get("/", async (req, res) => {
 
                 success: false,
 
-                error: "Missing date range."
+                error: "Start and End dates are required."
 
             });
 
         }
-
-        //--------------------------------------------------
-        // Historical Data
-        //--------------------------------------------------
 
         const candles = await getHistoricalData(
 
@@ -89,10 +69,6 @@ router.get("/", async (req, res) => {
 
         }
 
-        //--------------------------------------------------
-        // Live Snapshot
-        //--------------------------------------------------
-
         const snapshot = await buildLiveSnapshot(
 
             symbol,
@@ -101,23 +77,25 @@ router.get("/", async (req, res) => {
 
         );
 
-        //--------------------------------------------------
-        // Response
-        //--------------------------------------------------
+        res.json({
 
-        return res.json(snapshot);
+            success: true,
+
+            ...snapshot
+
+        });
 
     }
 
-    catch (error) {
+    catch (err) {
 
-        console.error(error);
+        console.error(err);
 
-        return res.status(500).json({
+        res.status(500).json({
 
             success: false,
 
-            error: error.message
+            error: err.message
 
         });
 
