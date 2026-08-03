@@ -7,6 +7,8 @@ const API_BASE =
         ? "http://localhost:3000"
         : "https://tradingsignals-5g76.onrender.com";
 
+window.API_BASE = "https://tradingsignals-5g76.onrender.com/api";
+
 // =========================================
 // Generic Request
 // =========================================
