@@ -1,39 +1,62 @@
+// routes/search.js
+
 import express from "express";
 import { searchSymbol } from "../services/yahoo.js";
 
 const router = express.Router();
 
-/*
-    GET /api/search?q=apple
-*/
+// ----------------------------------------------------
+// GET /api/search?q=apple
+// ----------------------------------------------------
 
 router.get("/", async (req, res) => {
-  try {
-    const query = (req.query.q || "").trim();
 
-    if (!query) {
-      return res.status(400).json({
-        success: false,
-        error: "Missing search query.",
-      });
+    try {
+
+        const query = (req.query.q || "").trim();
+
+        if (!query) {
+
+            return res.status(400).json({
+
+                success: false,
+
+                error: "Missing search query."
+
+            });
+
+        }
+
+        const results = await searchSymbol(query);
+
+        res.json({
+
+            success: true,
+
+            query,
+
+            count: results.length,
+
+            results
+
+        });
+
     }
 
-    const results = await searchSymbol(query);
+    catch (err) {
 
-    res.json({
-      success: true,
-      count: results.length,
-      results,
-    });
+        console.error("Search Error:", err);
 
-  } catch (error) {
-    console.error("Search Error:", error);
+        res.status(500).json({
 
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
+            success: false,
+
+            error: err.message
+
+        });
+
+    }
+
 });
 
 export default router;
