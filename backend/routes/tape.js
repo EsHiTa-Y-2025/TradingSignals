@@ -12,10 +12,6 @@ import { detectScenario } from "../calculations/scenarios.js";
 
 const router = express.Router();
 
-// -----------------------------------------------------
-// GET /api/tape
-// -----------------------------------------------------
-
 router.get("/", async (req, res) => {
 
     try {
@@ -114,24 +110,57 @@ router.get("/", async (req, res) => {
 
         let nextOpen = null;
 
-        if (historicalMode && candles.length >= 2) {
+        // BUG (previous version): this reused `candles[candles.length - 1]`,
+        // which is just the last candle already inside the selected range
+        // (same as `lastCandle` above) — so nextOpen was really "last day's open",
+        // not the open of the day AFTER `end`.
+        //
+        // Fix: actually fetch the next trading day after `end`. Search a short
+        // window forward (not just end+1) to skip past weekends/holidays.
+        if (historicalMode) {
 
-            const nextDay =
-                candles[candles.length - 1];
+            try {
 
-            nextOpen =
-                nextDay.open;
+                const nextDayStart = new Date(end + "T00:00:00Z");
+                nextDayStart.setUTCDate(nextDayStart.getUTCDate() + 1);
+                const nextStart = nextDayStart.toISOString().slice(0, 10);
 
-            prediction =
-                detectScenario({
+                const searchWindowEnd = new Date(nextDayStart);
+                searchWindowEnd.setUTCDate(searchWindowEnd.getUTCDate() + 7);
+                const nextEnd = searchWindowEnd.toISOString().slice(0, 10);
 
-                    currentPrice: nextOpen,
+                const nextCandles = await getHistoricalData(
+                    symbol,
+                    nextStart,
+                    nextEnd
+                );
 
-                    open: nextOpen,
+                if (nextCandles.length) {
 
-                    indicators
+                    nextOpen = nextCandles[0].open;
 
-                });
+                    prediction =
+                        detectScenario({
+
+                            currentPrice: nextOpen,
+
+                            open: nextOpen,
+
+                            indicators
+
+                        });
+
+                }
+
+            }
+
+            catch {
+
+                nextOpen = null;
+
+                prediction = null;
+
+            }
 
         }
 
