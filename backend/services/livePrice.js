@@ -1,8 +1,13 @@
+// services/livePrice.js
+
 import { getLivePrice } from "./yahoo.js";
 
 import { calculateTradePoint } from "../calculations/reduction.js";
 
-import { calculateIndicators } from "../calculations/indicators.js";
+import {
+    calculateIndicators,
+    calculateDistances
+} from "../calculations/indicators.js";
 
 import { detectScenario } from "../calculations/scenarios.js";
 
@@ -14,17 +19,19 @@ export async function buildLiveSnapshot(
 
 ) {
 
-    if (!candles || candles.length === 0) {
+    if (!candles || !candles.length) {
 
         throw new Error(
+
             "No historical candles supplied."
+
         );
 
     }
 
-    //--------------------------------------------------
+    //------------------------------------------------
     // Historical Levels
-    //--------------------------------------------------
+    //------------------------------------------------
 
     const high = Math.max(
 
@@ -42,25 +49,22 @@ export async function buildLiveSnapshot(
 
         candles[candles.length - 1];
 
-    //--------------------------------------------------
-    // Previous Close
-    //--------------------------------------------------
+    //------------------------------------------------
+    // Current Market
+    //------------------------------------------------
 
-    const previousClose =
-        lastCandle.close;
+    const live = await getLivePrice(
 
-    //--------------------------------------------------
-    // Live Market
-    //--------------------------------------------------
+        symbol
 
-    const live =
-        await getLivePrice(symbol);
+    );
 
-    //--------------------------------------------------
+    //------------------------------------------------
     // Reduction
-    //--------------------------------------------------
+    //------------------------------------------------
 
     const reduction =
+
         calculateTradePoint(
 
             high,
@@ -69,73 +73,72 @@ export async function buildLiveSnapshot(
 
         );
 
-    //--------------------------------------------------
+    //------------------------------------------------
     // Indicators
-    //--------------------------------------------------
+    //------------------------------------------------
 
     const indicators =
+
         calculateIndicators({
 
             high,
 
             low,
 
-            close: previousClose,
+            close: lastCandle.close,
 
             tradePoint:
                 reduction.tradePoint
 
         });
 
-    //--------------------------------------------------
-    // Scenario Engine
-    //--------------------------------------------------
+    //------------------------------------------------
+    // Market Engine
+    //------------------------------------------------
 
-    const market =
+    const engine =
+
         detectScenario({
-
-            previousClose,
-
-            open: live.open,
 
             currentPrice:
                 live.price,
 
-            indicators,
+            open:
+                live.open,
 
-            tradePoint:
-                reduction.tradePoint
+            indicators
 
         });
 
-    //--------------------------------------------------
+    //------------------------------------------------
+    // Distances
+    //------------------------------------------------
+
+    const distances =
+
+        calculateDistances(
+
+            live.price,
+
+            indicators
+
+        );
+
+    //------------------------------------------------
     // Response
-    //--------------------------------------------------
+    //------------------------------------------------
 
     return {
 
-        success: true,
-
         symbol,
 
-        timestamp: new Date(
+        timestamp:
 
-            live.timestamp * 1000
+            new Date(
 
-        ).toISOString(),
+                live.timestamp * 1000
 
-        historical: {
-
-            high,
-
-            low,
-
-            previousClose,
-
-            candlesUsed:
-                candles.length
-
-        },
+            ).toISOString(),
 
         live: {
 
@@ -155,6 +158,12 @@ export async function buildLiveSnapshot(
 
         reduction: {
 
+            high:
+                reduction.high,
+
+            low:
+                reduction.low,
+
             spread:
                 reduction.spread,
 
@@ -171,45 +180,9 @@ export async function buildLiveSnapshot(
 
         indicators,
 
-        engine: {
+        distances,
 
-            direction:
-                market.direction,
-
-            nearClose:
-                market.nearClose,
-
-            state:
-                market.state,
-
-            signal:
-                market.signal,
-
-            target:
-                market.target,
-
-            targetPrice:
-                market.targetPrice,
-
-            nextTarget:
-                market.nextTarget,
-
-            watchZone:
-                market.watchZone,
-
-            breakoutBuffer:
-                market.breakoutBuffer,
-
-            reversalBuffer:
-                market.reversalBuffer,
-
-            reason:
-                market.reason
-
-        },
-
-        distances:
-            market.distances
+        engine
 
     };
 
