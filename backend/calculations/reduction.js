@@ -1,63 +1,106 @@
-export function round(value, digits = 2) {
-  return Number(Number(value).toFixed(digits));
+// calculations/reduction.js
+
+export function round(value) {
+
+    return Number(
+
+        Number(value).toFixed(2)
+
+    );
+
 }
+
+// -----------------------------------------------------
+// Digital Root
+// -----------------------------------------------------
 
 export function digitalRoot(number) {
-  let value = Math.round(Math.abs(number));
-  const steps = [];
 
-  if (value === 0) {
+    let n = Math.abs(
+
+        Math.round(number)
+
+    );
+
+    const steps = [];
+
+    while (n >= 10) {
+
+        steps.push(n);
+
+        n = n
+            .toString()
+            .split("")
+            .reduce(
+
+                (sum, digit) =>
+
+                    sum + Number(digit),
+
+                0
+
+            );
+
+    }
+
+    steps.push(n);
+
     return {
-      root: 9,
-      steps: [],
-      wasZero: true,
+
+        value: n,
+
+        steps
+
     };
-  }
 
-  while (value >= 10) {
-    const digits = String(value).split("").map(Number);
-    const sum = digits.reduce((a, b) => a + b, 0);
-
-    steps.push({
-      digits,
-      sum,
-    });
-
-    value = sum;
-  }
-
-  return {
-    root: value,
-    steps,
-    wasZero: false,
-  };
 }
 
-export function calculateSpread(high, low) {
-  return round(high - low);
-}
+// -----------------------------------------------------
+// Trade Point Calculation
+// -----------------------------------------------------
 
-export function calculateTradePoint(high, low) {
-  const spread = calculateSpread(high, low);
+export function calculateTradePoint(
 
-  const {
-    root,
-    steps,
-    wasZero,
-  } = digitalRoot(spread);
+    high,
 
-  return {
-    high: round(high),
-    low: round(low),
+    low
 
-    spread,
+) {
 
-    digitalRoot: root,
+    const spread =
 
-    reductionSteps: steps,
+        round(high - low);
 
-    tradePoint: round(spread / root),
+    const root =
 
-    rootWasZero: wasZero,
-  };
+        digitalRoot(spread);
+
+    const tradePoint =
+
+        round(
+
+            spread /
+
+            root.value
+
+        );
+
+    return {
+
+        high: round(high),
+
+        low: round(low),
+
+        spread,
+
+        digitalRoot:
+            root.value,
+
+        reductionSteps:
+            root.steps,
+
+        tradePoint
+
+    };
+
 }
