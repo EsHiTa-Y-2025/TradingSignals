@@ -1,732 +1,189 @@
-// ======================================================
-// Reduction Tape Scanner Dashboard
-// dashboard.js
-// Part 1
-// ======================================================
-
-// --------------------------------------
-// Backend URL
-// --------------------------------------
-
-const API = "https://tradingsignals-5g76.onrender.com";
-
-// --------------------------------------
-// Global Variables
-// --------------------------------------
+const API = "https://tradingsignals-5g76.onrender.com/api";
 
 let currentSymbol = null;
-
-let currentLevels = null;
-
+let tapeData = null;
 let monitorTimer = null;
 
-let searchTimer = null;
+const $ = id => document.getElementById(id);
 
-let searchResults = [];
+const upperCard = document.querySelector(".upper");
+const spCard = document.querySelector(".sp");
+const closeCard = document.querySelector(".close");
+const bpCard = document.querySelector(".bp");
+const lowerCard = document.querySelector(".lower");
 
-let selectedSuggestion = -1;
+$("#searchBtn")?.addEventListener("click", searchSymbol);
+$("#calculateBtn")?.addEventListener("click", calculateTape);
+$("#startMonitoring")?.addEventListener("click", startMonitoring);
 
-// --------------------------------------
-// Helper
-// --------------------------------------
+async function searchSymbol() {
 
-const $ = (id) => document.getElementById(id);
+    const query = $("#symbolInput").value.trim();
 
-// --------------------------------------
-// Cards
-// --------------------------------------
+    if (!query) return;
 
-const upperCard =
-    document.querySelector(".upper");
+    try {
 
-const spCard =
-    document.querySelector(".sp");
+        const res = await fetch(
 
-const closeCard =
-    document.querySelector(".close");
-
-const bpCard =
-    document.querySelector(".bp");
-
-const lowerCard =
-    document.querySelector(".lower");
-
-// --------------------------------------
-// Inputs
-// --------------------------------------
-
-const symbolInput =
-    $("symbolInput");
-
-const suggestionBox =
-    $("searchSuggestions");
-
-const fromDate =
-    $("fromDate");
-
-const toDate =
-    $("toDate");
-
-// --------------------------------------
-// Buttons
-// --------------------------------------
-
-const searchBtn =
-    $("searchBtn");
-
-const calculateBtn =
-    $("calculateBtn");
-
-const startMonitoringBtn =
-    $("startMonitoring");
-
-// --------------------------------------
-// Event Listeners
-// --------------------------------------
-
-if(searchBtn){
-
-    searchBtn.addEventListener(
-
-        "click",
-
-        ()=>{
-
-            performSearch();
-
-        }
-
-    );
-
-}
-
-if(calculateBtn){
-
-    calculateBtn.addEventListener(
-
-        "click",
-
-        calculateLevels
-
-    );
-
-}
-
-if(startMonitoringBtn){
-
-    startMonitoringBtn.addEventListener(
-
-        "click",
-
-        startMonitoring
-
-    );
-
-}
-
-// --------------------------------------
-// Search Input
-// --------------------------------------
-
-if(symbolInput){
-
-    symbolInput.addEventListener(
-
-        "input",
-
-        handleTyping
-
-    );
-
-    symbolInput.addEventListener(
-
-        "keydown",
-
-        handleKeyboard
-
-    );
-
-}
-
-// Close suggestions when clicking outside
-
-document.addEventListener(
-
-    "click",
-
-    (e)=>{
-
-        if(
-
-            suggestionBox &&
-
-            !suggestionBox.contains(e.target) &&
-
-            e.target!==symbolInput
-
-        ){
-
-            hideSuggestions();
-
-        }
-
-    }
-
-);
-
-// ======================================================
-// SEARCH
-// ======================================================
-
-async function handleTyping(){
-
-    const query =
-        symbolInput.value.trim();
-
-    if(query.length<2){
-
-        hideSuggestions();
-
-        return;
-
-    }
-
-    clearTimeout(searchTimer);
-
-    searchTimer = setTimeout(
-
-        ()=>{
-
-            performSearch();
-
-        },
-
-        300
-
-    );
-
-}
-
-// --------------------------------------
-// Search API
-// --------------------------------------
-
-async function performSearch(){
-
-    const query =
-        symbolInput.value.trim();
-
-    if(!query)
-        return;
-
-    try{
-
-        const response = await fetch(
-
-            `${API}/api/search?q=${encodeURIComponent(query)}`
+            `${API}/search?q=${encodeURIComponent(query)}`
 
         );
 
-        const data =
-            await response.json();
+        const json = await res.json();
 
-        if(!data.success){
+        if (!json.success || !json.results.length) {
 
-            alert(data.error);
+            alert("Symbol not found");
 
             return;
 
         }
 
-        searchResults =
-            data.results || [];
+        currentSymbol = json.results[0];
 
-        renderSuggestions();
+        $("#symbolInput").value =
+            `${currentSymbol.name} (${currentSymbol.symbol})`;
 
     }
 
-    catch(err){
+    catch (err) {
 
-        console.error(err);
+        console.log(err);
+
+        alert("Search failed");
 
     }
 
 }
 
-// ======================================================
-// RENDER SEARCH SUGGESTIONS
-// ======================================================
+async function calculateTape() {
 
-function renderSuggestions(){
+    if (!currentSymbol) {
 
-    if(!suggestionBox)
-        return;
-
-    suggestionBox.innerHTML = "";
-
-    selectedSuggestion = -1;
-
-    if(searchResults.length===0){
-
-        suggestionBox.classList.remove("show");
+        alert("Search a symbol first.");
 
         return;
 
     }
 
-    searchResults.forEach(
+    const start = $("#fromDate").value;
 
-        (item,index)=>{
+    const end = $("#toDate").value;
 
-            const div =
-                document.createElement("div");
+    if (!start || !end) {
 
-            div.className =
-                "suggestion";
-
-            div.innerHTML = `
-
-                <div class="suggestionTitle">
-
-                    ${item.name}
-
-                </div>
-
-                <div class="suggestionSub">
-
-                    ${item.symbol}
-                    •
-                    ${item.exchange}
-                    •
-                    ${item.type}
-
-                </div>
-
-            `;
-
-            div.addEventListener(
-
-                "click",
-
-                ()=>{
-
-                    chooseSuggestion(index);
-
-                }
-
-            );
-
-            suggestionBox.appendChild(div);
-
-        }
-
-    );
-
-    suggestionBox.classList.add("show");
-
-}
-
-// ======================================================
-// SELECT A SUGGESTION
-// ======================================================
-
-function chooseSuggestion(index){
-
-    currentSymbol =
-        searchResults[index];
-
-    if(!currentSymbol)
-        return;
-
-    symbolInput.value =
-
-        `${currentSymbol.name} (${currentSymbol.symbol})`;
-
-    hideSuggestions();
-
-}
-
-// ======================================================
-// HIDE SUGGESTIONS
-// ======================================================
-
-function hideSuggestions(){
-
-    if(!suggestionBox)
-        return;
-
-    suggestionBox.classList.remove(
-        "show"
-    );
-
-    suggestionBox.innerHTML = "";
-
-    selectedSuggestion = -1;
-
-}
-
-// ======================================================
-// KEYBOARD NAVIGATION
-// ======================================================
-
-function handleKeyboard(event){
-
-    if(
-
-        !suggestionBox ||
-
-        !suggestionBox.classList.contains("show")
-
-    ){
+        alert("Choose a date range.");
 
         return;
 
     }
 
-    const items =
+    try {
 
-        suggestionBox.querySelectorAll(
+        const res = await fetch(
 
-            ".suggestion"
+            `${API}/tape?symbol=${currentSymbol.symbol}&start=${start}&end=${end}`
 
         );
 
-    // -----------------------------
-    // DOWN
-    // -----------------------------
+        tapeData = await res.json();
 
-    if(event.key==="ArrowDown"){
+        if (!tapeData.success) {
 
-        event.preventDefault();
+            alert(tapeData.error);
 
-        selectedSuggestion++;
-
-        if(
-
-            selectedSuggestion>=items.length
-
-        ){
-
-            selectedSuggestion=0;
+            return;
 
         }
 
-        updateSuggestionHighlight(items);
+        loadLevels();
 
-    }
+        if (tapeData.historicalMode) {
 
-    // -----------------------------
-    // UP
-    // -----------------------------
-
-    else if(event.key==="ArrowUp"){
-
-        event.preventDefault();
-
-        selectedSuggestion--;
-
-        if(selectedSuggestion<0){
-
-            selectedSuggestion=
-
-                items.length-1;
-
-        }
-
-        updateSuggestionHighlight(items);
-
-    }
-
-    // -----------------------------
-    // ENTER
-    // -----------------------------
-
-    else if(event.key==="Enter"){
-
-        event.preventDefault();
-
-        if(
-
-            selectedSuggestion>=0
-
-        ){
-
-            chooseSuggestion(
-
-                selectedSuggestion
-
-            );
-
-        }
-
-        else{
-
-            performSearch();
+            showHistoricalPrediction();
 
         }
 
     }
 
-    // -----------------------------
-    // ESC
-    // -----------------------------
+    catch (err) {
 
-    else if(event.key==="Escape"){
-
-        hideSuggestions();
+        console.log(err);
 
     }
 
 }
 
-// ======================================================
-// UPDATE HIGHLIGHT
-// ======================================================
+function loadLevels() {
 
-function updateSuggestionHighlight(items){
+    const L = tapeData.indicators;
 
-    items.forEach(
+    $("#upperTdp").innerText = L.upperTDP.toFixed(2);
 
-        item=>item.classList.remove(
+    $("#sp").innerText = L.SP.toFixed(2);
 
-            "active"
+    $("#close").innerText = L.close.toFixed(2);
 
-        )
+    $("#bp").innerText = L.BP.toFixed(2);
 
-    );
-
-    if(
-
-        selectedSuggestion>=0 &&
-
-        items[selectedSuggestion]
-
-    ){
-
-        items[selectedSuggestion]
-
-        .classList
-
-        .add("active");
-
-        items[selectedSuggestion]
-
-        .scrollIntoView({
-
-            block:"nearest"
-
-        });
-
-    }
+    $("#lowerTdp").innerText = L.lowerTDP.toFixed(2);
 
 }
 
+function showHistoricalPrediction() {
 
-// ======================================================
-// CALCULATE REDUCTION TAPE
-// ======================================================
+    const engine = tapeData.prediction;
 
-async function calculateLevels(){
+    if (!engine) return;
 
-    if(!currentSymbol){
+    $("#livePrice").innerText =
+        tapeData.nextOpen.toFixed(2);
+
+    $("#marketOpen").innerText =
+        tapeData.nextOpen.toFixed(2);
+
+    $("#scenario").innerText =
+        engine.state;
+
+    $("#signal").innerText =
+        engine.signal;
+
+    $("#reason").innerText =
+        engine.reason;
+
+    $("#signal").className =
+        engine.signal.toLowerCase();
+
+    updateDistances(engine.distances);
+
+    highlightTarget(engine.target);
+
+}
+
+function startMonitoring() {
+
+    if (!tapeData) {
+
+        alert("Calculate levels first.");
+
+        return;
+
+    }
+
+    if (tapeData.historicalMode) {
 
         alert(
-            "Please select a stock first."
+            "Historical Mode selected.\nLive monitoring is disabled."
         );
 
         return;
 
     }
 
-    const start =
-        fromDate.value;
+    if (monitorTimer) {
 
-    const end =
-        toDate.value;
-
-    if(!start || !end){
-
-        alert(
-            "Please select Start and End dates."
-        );
-
-        return;
-
-    }
-
-    try{
-
-        calculateBtn.disabled = true;
-
-        calculateBtn.innerText =
-            "Calculating...";
-
-        const response =
-            await fetch(
-
-                `${API}/api/tape?symbol=${encodeURIComponent(
-                    currentSymbol.symbol
-                )}&start=${start}&end=${end}`
-
-            );
-
-        const data =
-            await response.json();
-
-        if(!response.ok || !data.success){
-
-            throw new Error(
-
-                data.error ||
-
-                "Unable to calculate tape."
-
-            );
-
-        }
-
-        //--------------------------------------------------
-        // Store indicators
-        //--------------------------------------------------
-
-        currentLevels =
-            data.indicators;
-
-        //--------------------------------------------------
-        // Display Levels
-        //--------------------------------------------------
-
-        $("upperTdp").innerText =
-
-            currentLevels.upperTDP.toFixed(2);
-
-        $("sp").innerText =
-
-            currentLevels.SP.toFixed(2);
-
-        $("close").innerText =
-
-            currentLevels.close.toFixed(2);
-
-        $("bp").innerText =
-
-            currentLevels.BP.toFixed(2);
-
-        $("lowerTdp").innerText =
-
-            currentLevels.lowerTDP.toFixed(2);
-
-        //--------------------------------------------------
-        // Clear Previous Monitor
-        //--------------------------------------------------
-
-        $("livePrice").innerText = "-";
-
-        $("marketOpen").innerText = "-";
-
-        $("scenario").innerText = "-";
-
-        $("signal").innerText = "WAIT";
-
-        $("reason").innerText =
-
-            "Waiting for monitoring...";
-
-        $("distUpper").innerText = "-";
-
-        $("distSP").innerText = "-";
-
-        $("distClose").innerText = "-";
-
-        $("distBP").innerText = "-";
-
-        $("distLower").innerText = "-";
-
-        //--------------------------------------------------
-        // Remove Highlight
-        //--------------------------------------------------
-
-        document
-
-            .querySelectorAll(".levelCard")
-
-            .forEach(card=>{
-
-                card.classList.remove(
-
-                    "closest"
-
-                );
-
-            });
-
-        console.log(
-
-            "Tape Calculated",
-
-            currentLevels
-
-        );
-
-    }
-
-    catch(err){
-
-        console.error(err);
-
-        alert(
-
-            err.message ||
-
-            "Calculation failed."
-
-        );
-
-    }
-
-    finally{
-
-        calculateBtn.disabled = false;
-
-        calculateBtn.innerText =
-
-            "Calculate";
-
-    }
-
-}
-
-// ======================================================
-// START LIVE MONITORING
-// ======================================================
-
-function startMonitoring(){
-
-    if(!currentSymbol){
-
-        alert(
-            "Please search and select a symbol."
-        );
-
-        return;
-
-    }
-
-    if(!currentLevels){
-
-        alert(
-            "Calculate the Reduction Tape first."
-        );
-
-        return;
-
-    }
-
-    if(monitorTimer){
-
-        clearInterval(
-            monitorTimer
-        );
+        clearInterval(monitorTimer);
 
     }
 
@@ -740,23 +197,150 @@ function startMonitoring(){
 
     );
 
-    console.log(
-        "Live Monitoring Started"
-    );
+}
+
+async function updateLive() {
+
+    try {
+
+        const start =
+            $("#fromDate").value;
+
+        const end =
+            $("#toDate").value;
+
+        const res = await fetch(
+
+            `${API}/live?symbol=${currentSymbol.symbol}&start=${start}&end=${end}`
+
+        );
+
+        const json = await res.json();
+
+        if (!json.success) {
+
+            console.log(json.error);
+
+            return;
+
+        }
+
+        $("#livePrice").innerText =
+            json.live.price.toFixed(2);
+
+        $("#marketOpen").innerText =
+            json.live.open.toFixed(2);
+
+        $("#scenario").innerText =
+            json.engine.state;
+
+        $("#signal").innerText =
+            json.engine.signal;
+
+        $("#reason").innerText =
+            json.engine.reason;
+
+        $("#signal").className =
+            json.engine.signal.toLowerCase();
+
+        updateDistances(
+            json.distances
+        );
+
+        highlightTarget(
+            json.engine.target
+        );
+
+    }
+
+    catch (err) {
+
+        console.log(err);
+
+    }
 
 }
 
-// ======================================================
-// STOP LIVE MONITORING
-// ======================================================
+function updateDistances(distances) {
 
-function stopMonitoring(){
+    if (!distances) return;
 
-    if(monitorTimer){
+    $("#distUpper").innerText =
+        distances.upperTDP.toFixed(2);
 
-        clearInterval(
-            monitorTimer
+    $("#distSP").innerText =
+        distances.SP.toFixed(2);
+
+    $("#distClose").innerText =
+        distances.close.toFixed(2);
+
+    $("#distBP").innerText =
+        distances.BP.toFixed(2);
+
+    $("#distLower").innerText =
+        distances.lowerTDP.toFixed(2);
+
+}
+
+function resetCards() {
+
+    document
+
+        .querySelectorAll(".levelCard")
+
+        .forEach(card =>
+
+            card.classList.remove("closest")
+
         );
+
+}
+
+function highlightTarget(target) {
+
+    resetCards();
+
+    switch (target) {
+
+        case "UPPER_TDP":
+
+            upperCard?.classList.add("closest");
+
+            break;
+
+        case "SP":
+
+            spCard?.classList.add("closest");
+
+            break;
+
+        case "CLOSE":
+
+            closeCard?.classList.add("closest");
+
+            break;
+
+        case "BP":
+
+            bpCard?.classList.add("closest");
+
+            break;
+
+        case "LOWER_TDP":
+
+            lowerCard?.classList.add("closest");
+
+            break;
+
+    }
+
+}
+
+function clearMonitor() {
+
+    if (monitorTimer) {
+
+        clearInterval(monitorTimer);
 
         monitorTimer = null;
 
@@ -764,420 +348,146 @@ function stopMonitoring(){
 
 }
 
-// ======================================================
-// FETCH LIVE DATA
-// ======================================================
+//-----------------------------------------------------
+// Auto Stop Monitoring
+//-----------------------------------------------------
 
-async function updateLive(){
+function isTodaySelected() {
 
-    if(
-        !currentSymbol ||
-        !currentLevels
-    ){
-        return;
-    }
+    const end = $("#toDate").value;
 
-    const start =
-        fromDate.value;
+    if (!end) return false;
 
-    const end =
-        toDate.value;
+    const today = new Date()
+        .toISOString()
+        .slice(0, 10);
 
-    try{
-
-        const response =
-            await fetch(
-
-                `${API}/api/live?symbol=${encodeURIComponent(
-                    currentSymbol.symbol
-                )}&start=${start}&end=${end}`
-
-            );
-
-        const data =
-            await response.json();
-
-        if(
-            !response.ok ||
-            !data.success
-        ){
-
-            throw new Error(
-
-                data.error ||
-
-                "Unable to fetch live data."
-
-            );
-
-        }
-
-        //----------------------------------
-        // Live Price
-        //----------------------------------
-
-        $("livePrice").innerText =
-
-            Number(
-                data.live.price
-            ).toFixed(2);
-
-        $("marketOpen").innerText =
-
-            Number(
-                data.live.open
-            ).toFixed(2);
-
-        //----------------------------------
-        // Scenario
-        //----------------------------------
-
-        $("scenario").innerText =
-
-            data.monitor.scenario;
-
-        //----------------------------------
-        // Signal
-        //----------------------------------
-
-        $("signal").innerText =
-
-            data.monitor.signal;
-
-        $("signal").className =
-
-            data.monitor.signal.toLowerCase();
-
-        //----------------------------------
-        // Reason
-        //----------------------------------
-
-        $("reason").innerText =
-
-            data.monitor.reason;
-
-        //----------------------------------
-        // Distances
-        //----------------------------------
-
-        $("distUpper").innerText =
-
-            data.monitor.distances.upperTDP.toFixed(2);
-
-        $("distSP").innerText =
-
-            data.monitor.distances.SP.toFixed(2);
-
-        $("distClose").innerText =
-
-            data.monitor.distances.close.toFixed(2);
-
-        $("distBP").innerText =
-
-            data.monitor.distances.BP.toFixed(2);
-
-        $("distLower").innerText =
-
-            data.monitor.distances.lowerTDP.toFixed(2);
-
-        //----------------------------------
-        // Highlight nearest level
-        //----------------------------------
-
-        highlightNearest(
-
-            data.live.price
-
-        );
-
-    }
-
-    catch(err){
-
-        console.error(err);
-
-    }
+    return end === today;
 
 }
 
-// ======================================================
-// HIGHLIGHT NEAREST LEVEL
-// ======================================================
+function canStartMonitoring() {
 
-function highlightNearest(price){
+    if (!tapeData)
+        return false;
 
-    if(!currentLevels)
+    if (tapeData.historicalMode)
+        return false;
+
+    return isTodaySelected();
+
+}
+
+//-----------------------------------------------------
+// Refresh Timer
+//-----------------------------------------------------
+
+function restartMonitoring() {
+
+    clearMonitor();
+
+    if (!canStartMonitoring())
         return;
 
-    document
+    updateLive();
 
-        .querySelectorAll(".levelCard")
+    monitorTimer = setInterval(
 
-        .forEach(card=>{
+        updateLive,
 
-            card.classList.remove(
-                "closest"
-            );
+        2000
 
-        });
-
-    const levels=[
-
-        {
-
-            card:upperCard,
-
-            value:currentLevels.upperTDP
-
-        },
-
-        {
-
-            card:spCard,
-
-            value:currentLevels.SP
-
-        },
-
-        {
-
-            card:closeCard,
-
-            value:currentLevels.close
-
-        },
-
-        {
-
-            card:bpCard,
-
-            value:currentLevels.BP
-
-        },
-
-        {
-
-            card:lowerCard,
-
-            value:currentLevels.lowerTDP
-
-        }
-
-    ];
-
-    let nearest=null;
-
-    let nearestDistance=Infinity;
-
-    levels.forEach(level=>{
-
-        if(!level.card)
-            return;
-
-        const distance=Math.abs(
-
-            price-level.value
-
-        );
-
-        if(distance<nearestDistance){
-
-            nearestDistance=distance;
-
-            nearest=level;
-
-        }
-
-    });
-
-    if(nearest){
-
-        nearest.card.classList.add(
-
-            "closest"
-
-        );
-
-    }
+    );
 
 }
 
-// ======================================================
-// RESET DASHBOARD
-// ======================================================
+//-----------------------------------------------------
+// Date Change
+//-----------------------------------------------------
 
-function resetDashboard(){
+$("#fromDate")?.addEventListener(
 
-    stopMonitoring();
+    "change",
 
-    currentLevels=null;
+    clearMonitor
 
-    currentSymbol=null;
+);
 
-    if(symbolInput)
-        symbolInput.value="";
+$("#toDate")?.addEventListener(
 
-    const ids=[
+    "change",
 
-        "upperTdp",
+    clearMonitor
 
-        "sp",
+);
 
-        "close",
+//-----------------------------------------------------
+// Symbol Change
+//-----------------------------------------------------
 
-        "bp",
+$("#symbolInput")?.addEventListener(
 
-        "lowerTdp",
+    "input",
 
-        "livePrice",
+    () => {
 
-        "marketOpen",
+        clearMonitor();
 
-        "scenario",
-
-        "reason",
-
-        "distUpper",
-
-        "distSP",
-
-        "distClose",
-
-        "distBP",
-
-        "distLower"
-
-    ];
-
-    ids.forEach(id=>{
-
-        const element=$(id);
-
-        if(element){
-
-            element.innerText="—";
-
-        }
-
-    });
-
-    if($("signal")){
-
-        $("signal").innerText="WAIT";
-
-        $("signal").className="wait";
-
-    }
-
-    document
-
-        .querySelectorAll(".levelCard")
-
-        .forEach(card=>{
-
-            card.classList.remove(
-
-                "closest"
-
-            );
-
-        });
-
-}
-
-// ======================================================
-// AUTO PAUSE WHEN TAB IS HIDDEN
-// ======================================================
-
-document.addEventListener(
-
-    "visibilitychange",
-
-    ()=>{
-
-        if(document.hidden){
-
-            stopMonitoring();
-
-        }
-
-        else if(currentLevels){
-
-            startMonitoring();
-
-        }
+        currentSymbol = null;
 
     }
 
 );
 
-// ======================================================
-// DEFAULT DATES
-// ======================================================
+//-----------------------------------------------------
+// Window Focus
+//-----------------------------------------------------
+
+window.addEventListener(
+
+    "focus",
+
+    () => {
+
+        if (canStartMonitoring())
+
+            restartMonitoring();
+
+    }
+
+);
+
+//-----------------------------------------------------
+// Window Blur
+//-----------------------------------------------------
+
+window.addEventListener(
+
+    "blur",
+
+    () => {
+
+        clearMonitor();
+
+    }
+
+);
+
+//-----------------------------------------------------
+// Page Load
+//-----------------------------------------------------
 
 window.addEventListener(
 
     "load",
 
-    ()=>{
+    () => {
 
-        const today=new Date();
-
-        const previous=new Date();
-
-        previous.setMonth(
-
-            previous.getMonth()-1
-
-        );
-
-        if(fromDate){
-
-            fromDate.value=
-
-                previous
-
-                .toISOString()
-
-                .slice(0,10);
-
-        }
-
-        if(toDate){
-
-            toDate.value=
-
-                today
-
-                .toISOString()
-
-                .slice(0,10);
-
-        }
+        clearMonitor();
 
         console.log(
 
-            "================================"
-
-        );
-
-        console.log(
-
-            "Reduction Tape Scanner Loaded"
-
-        );
-
-        console.log(
-
-            "Backend:",
-
-            API
-
-        );
-
-        console.log(
-
-            "================================"
+            "Reduction Tape Scanner Ready"
 
         );
 
@@ -1185,6 +495,14 @@ window.addEventListener(
 
 );
 
-// ======================================================
-// END OF dashboard.js
-// ======================================================
+//-----------------------------------------------------
+// Before Unload
+//-----------------------------------------------------
+
+window.addEventListener(
+
+    "beforeunload",
+
+    clearMonitor
+
+);
