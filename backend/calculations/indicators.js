@@ -1,3 +1,5 @@
+// calculations/indicators.js
+
 import { round } from "./reduction.js";
 
 /*
@@ -9,64 +11,175 @@ import { round } from "./reduction.js";
 */
 
 export function calculateIndicators({
-  high,
-  low,
-  close,
-  tradePoint,
+
+    high,
+
+    low,
+
+    close,
+
+    tradePoint
+
 }) {
-  const upperTDP = round(close + tradePoint);
-  const lowerTDP = round(close - tradePoint);
 
-  const SP = round(low + tradePoint);
-  const BP = round(high - tradePoint);
+    const upperTDP = round(
 
-  return {
-    close: round(close),
+        close + tradePoint
 
-    upperTDP,
-    lowerTDP,
+    );
 
-    SP,
-    BP,
-  };
+    const lowerTDP = round(
+
+        close - tradePoint
+
+    );
+
+    const SP = round(
+
+        low + tradePoint
+
+    );
+
+    const BP = round(
+
+        high - tradePoint
+
+    );
+
+    return {
+
+        close: round(close),
+
+        upperTDP,
+
+        lowerTDP,
+
+        SP,
+
+        BP
+
+    };
+
 }
 
-export function calculateDistances(currentPrice, indicators) {
-  return {
-    toUpperTDP: round(currentPrice - indicators.upperTDP),
+// ----------------------------------------------------
+// Distances from Current Price
+// ----------------------------------------------------
 
-    toLowerTDP: round(currentPrice - indicators.lowerTDP),
+export function calculateDistances(
 
-    toSP: round(currentPrice - indicators.SP),
+    currentPrice,
 
-    toBP: round(currentPrice - indicators.BP),
-  };
+    indicators
+
+) {
+
+    return {
+
+        upperTDP: round(
+
+            indicators.upperTDP -
+
+            currentPrice
+
+        ),
+
+        SP: round(
+
+            indicators.SP -
+
+            currentPrice
+
+        ),
+
+        close: round(
+
+            indicators.close -
+
+            currentPrice
+
+        ),
+
+        BP: round(
+
+            indicators.BP -
+
+            currentPrice
+
+        ),
+
+        lowerTDP: round(
+
+            indicators.lowerTDP -
+
+            currentPrice
+
+        )
+
+    };
+
 }
+
+// ----------------------------------------------------
+// Full Calculation Object
+// ----------------------------------------------------
 
 export function buildCalculation({
-  high,
-  low,
-  close,
-  tradePoint,
-}) {
-  const indicators = calculateIndicators({
+
     high,
+
     low,
+
     close,
-    tradePoint,
-  });
 
-  return {
-    high: round(high),
-    low: round(low),
-    close: round(close),
+    tradePoint
 
-    tradePoint: round(tradePoint),
+}) {
 
-    upperTDP: indicators.upperTDP,
-    lowerTDP: indicators.lowerTDP,
+    const indicators =
 
-    SP: indicators.SP,
-    BP: indicators.BP,
-  };
+        calculateIndicators({
+
+            high,
+
+            low,
+
+            close,
+
+            tradePoint
+
+        });
+
+    return {
+
+        high: round(high),
+
+        low: round(low),
+
+        close: round(close),
+
+        tradePoint: round(
+
+            tradePoint
+
+        ),
+
+        upperTDP:
+
+            indicators.upperTDP,
+
+        lowerTDP:
+
+            indicators.lowerTDP,
+
+        SP:
+
+            indicators.SP,
+
+        BP:
+
+            indicators.BP
+
+    };
+
 }
